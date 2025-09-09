@@ -1,7 +1,7 @@
 Pod::Spec.new do |spec|
   spec.name         = 'TUIChat_Swift'
   spec.module_name  = 'TUIChat'
-  spec.version      = '8.6.7019'
+  spec.version      = '8.7.7201'
   spec.platform     = :ios
   spec.ios.deployment_target = '9.0'
   spec.license      = { :type => 'Proprietary',
@@ -18,7 +18,7 @@ Pod::Spec.new do |spec|
 
   spec.requires_arc = true
 
-  spec.source = { :http => 'https://im.sdk.cloud.tencent.cn/download/tuikit/8.6.7019/ios/TUIChat_Swift.zip?time=1'}
+  spec.source = { :http => 'https://im.sdk.cloud.tencent.cn/download/tuikit/8.7.7201/ios/TUIChat_Swift.zip?time=1'}
 
   spec.default_subspec = 'ALL'
 
@@ -26,7 +26,7 @@ Pod::Spec.new do |spec|
     commonModel.source_files = '**/TUIChat/CommonModel/*.{h,m,mm,swift}'
     commonModel.dependency 'TXIMSDK_Plus_iOS_XCFramework'
     commonModel.dependency 'TUICore'
-    commonModel.dependency 'TIMCommon_Swift','~> 8.6.7019'
+    commonModel.dependency 'TIMCommon_Swift','~> 8.7.7201'
     commonModel.dependency 'SDWebImage'
     commonModel.dependency 'SnapKit'
   end
