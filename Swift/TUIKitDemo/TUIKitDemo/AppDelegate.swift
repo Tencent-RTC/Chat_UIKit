@@ -1,5 +1,6 @@
 import TIMAppKit
 import TIMCommon
+
 import TIMPush
 import TUIChat
 import TUIContact
@@ -10,9 +11,8 @@ import UserNotifications
 #if ENABLELIVE
 import TXLiteAVSDK_TRTC
 #endif
-
 @main
-class AppDelegate: UIResponder, UIApplicationDelegate, V2TIMConversationListener, TUILoginListener, TUIThemeSelectControllerDelegate, TUILanguageSelectControllerDelegate, V2TIMAPNSListener, V2TIMSDKListener, TIMPushDelegate {
+class AppDelegate: UIResponder, UIApplicationDelegate, V2TIMConversationListener, TUILoginListener, TUIThemeSelectControllerDelegate, TUILanguageSelectControllerDelegate, V2TIMAPNSListener, V2TIMSDKListener, TIMPushDelegate, TIMPushListener {
     var window: UIWindow?
     let contactDataProvider: TUIContactViewDataProvider = .init()
     private var _loginConfig: TUILoginConfig?
@@ -48,7 +48,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, V2TIMConversationListener
         setupConfig()
         tryPreloadMainVC()
         tryAutoLogin()
-
+        TIMPushManager.addPushListener(listener: self);
         return true
     }
 
@@ -683,23 +683,35 @@ class AppDelegate: UIResponder, UIApplicationDelegate, V2TIMConversationListener
 
     // MARK: - TIMPush
 
-    func businessID() -> Int {
+    // TIMPushDelegate
+    @objc func businessID() -> Int32 {
         let kAPNSBusiIdByType = UserDefaults.standard.integer(forKey: "kAPNSBusiIdByType")
         if kAPNSBusiIdByType > 0 {
-            return kAPNSBusiIdByType
+            return Int32(kAPNSBusiIdByType)
         }
-        return Int(kAPNSBusiId)
+        return Int32(Int(kAPNSBusiId))
     }
 
-    func applicationGroupID() -> String {
-        return kTIMPushAppGroupKey
+    @objc func applicationGroupID() -> String {
+        return ""
     }
 
-    func onRemoteNotificationReceived(_ notice: String?) -> Bool {
+    @objc func onRemoteNotificationReceived(_ notice: String?) -> Bool {
+        /*
+         - If true is returned, TIMPush will no longer execute the built-in TUIKit offline push parsing logic, leaving it entirely to you to handle;
+                 let ext = notice
+                 let info = OfflinePushExtInfo.create(withExtString: ext)
+                 return true
+         
+        - If false is returned, TIMPush will continue to execute the built-in TUIKit offline push parsing logic and continue the callback - navigateToBuiltInChatViewController:groupID:
+               return false
+         
+        */
+        
         return false
     }
 
-    func navigateToBuiltInChatViewController(userID: String?, groupID: String?) {
+    @objc func navigateToBuiltInChatViewController(userID: String?, groupID: String?) {
         if V2TIMManager.sharedInstance().getLoginStatus() == .STATUS_LOGINED {
             navigateToBuiltInChatViewControllerImpl(userID, groupID: groupID)
         } else {
@@ -713,13 +725,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate, V2TIMConversationListener
     }
 
     @objc func onLoginSucc() {
-        if let userID = clickNotificationInfo["userID"], let groupID = clickNotificationInfo["groupID"] {
-            navigateToBuiltInChatViewControllerImpl(userID, groupID: groupID)
-            clickNotificationInfo.removeAll()
+        let userID = clickNotificationInfo["userID"]
+        let groupID = clickNotificationInfo["groupID"]
+        if userID != nil || groupID != nil {
+            self.navigateToBuiltInChatViewControllerImpl(userID, groupID: groupID)
+            self.clickNotificationInfo.removeAll()
         }
     }
 
-    func navigateToBuiltInChatViewControllerImpl(_ userID: String?, groupID: String?) {
+   @objc func navigateToBuiltInChatViewControllerImpl(_ userID: String?, groupID: String?) {
         let tab: UITabBarController = getMainController()
         if tab.selectedIndex != 0 {
             tab.selectedIndex = 0
@@ -728,9 +742,30 @@ class AppDelegate: UIResponder, UIApplicationDelegate, V2TIMConversationListener
         guard let nav = tab.selectedViewController as? UINavigationController else { return }
 
         guard let vc = nav.viewControllers.first else { return }
+        // Check if it's ConversationController or ConversationController_Minimalist
+        if !vc.isKind(of: NSClassFromString("ConversationController") ?? NSObject.self) &&
+           !vc.isKind(of: NSClassFromString("ConversationController_Minimalist") ?? NSObject.self) {
+            return
+        }
+        
+        // Use the correct method signature matching OC version: pushToChatViewController:userID:
         if vc.responds(to: NSSelectorFromString("pushToChatViewController:userID:")) {
             vc.perform(NSSelectorFromString("pushToChatViewController:userID:"), with: groupID, with: userID)
         }
+    }
+    
+    // MARK: - TIMPushListener
+
+    func onRecvPushMessage(_ message: TIMPushMessage) {
+        NSLog("onRecvPushMessage:%@",message)
+    }
+    
+    func onRevokePushMessage(_ messageID: String) {
+        NSLog("onRevokePushMessage:%@",messageID)
+    }
+    
+    func onNotificationClicked(_ ext: String) {
+        NSLog("onNotificationClicked:%@",ext)
     }
 }
 

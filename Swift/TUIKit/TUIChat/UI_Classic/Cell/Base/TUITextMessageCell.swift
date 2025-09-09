@@ -124,6 +124,7 @@ public class TUITextMessageCell: TUIBubbleMessageCell, UITextViewDelegate, TUITe
             let textFont: UIFont = data.direction == .incoming ? TUITextMessageCell.incommingTextFont! : TUITextMessageCell.outgoingTextFont!
 
             textView.attributedText = data.getContentAttributedString(textFont: textFont)
+            textView.textAlignment = TUISwift.isRTL() ? .right : .left
             textView.textColor = textColor
             textView.font = textFont
             

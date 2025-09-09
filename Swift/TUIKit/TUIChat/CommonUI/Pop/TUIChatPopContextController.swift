@@ -19,6 +19,7 @@ public class TUIChatPopContextController: UIViewController, V2TIMAdvancedMsgList
     var dismissComplete: (() -> Void)?
     var reactClickCallback: ((String) -> Void)?
     var items: [TUIChatPopContextExtensionItem]? = []
+    public  var isConfigRecentView :Bool = true
 
     private var recentView: UIView!
     private var alertContainerView: UIView?
@@ -78,6 +79,7 @@ public class TUIChatPopContextController: UIViewController, V2TIMAdvancedMsgList
 
         backgroundColor = .clear
         backgoundTapDismissEnable = true
+        isConfigRecentView = true
         V2TIMManager.sharedInstance().addAdvancedMsgListener(listener: self)
     }
 
@@ -199,6 +201,9 @@ public class TUIChatPopContextController: UIViewController, V2TIMAdvancedMsgList
             height: TUISwift.kScale390(40)
         )
 
+        if (!isConfigRecentView) {
+            recentView.alpha = 0
+        }
         let param: [String: Any] = ["TUICore_TUIChatExtension_ChatPopMenuReactRecentView_Delegate": self]
         TUICore.raiseExtension(
             "TUICore_TUIChatExtension_ChatPopMenuReactRecentView_MinimalistExtensionID",

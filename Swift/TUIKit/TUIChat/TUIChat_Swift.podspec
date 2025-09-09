@@ -1,8 +1,8 @@
 Pod::Spec.new do |spec|
   spec.name         = 'TUIChat_Swift'
   spec.module_name  = 'TUIChat'
-  spec.version      = '8.6.7019'
-  spec.platform     = :ios 
+  spec.version      = '8.7.7201'
+  spec.platform     = :ios
   spec.ios.deployment_target = '9.0'
   spec.license      = { :type => 'Proprietary',
       :text => <<-LICENSE

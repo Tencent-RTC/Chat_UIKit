@@ -185,6 +185,9 @@ class TUIMessageDataProvider: TUIMessageBaseDataProvider {
             if businessID.contains("customerServicePlugin") {
                 return nil
             }
+            if businessID.contains("IgnoreMessage") {
+                return nil
+            }
             return getUnsupportedCellData(message)
         } else {
             return getUnsupportedCellData(message)
@@ -424,6 +427,9 @@ class TUIMessageDataProvider: TUIMessageBaseDataProvider {
             if businessID.contains("customerServicePlugin") {
                 return nil
             }
+            if businessID.contains("IgnoreMessage") {
+                return nil
+            }
             return TUISwift.timCommonLocalizableString("TUIKitMessageTipsUnsupportCustomMessage")
         } else {
             return TUISwift.timCommonLocalizableString("TUIKitMessageTipsUnsupportCustomMessage")
@@ -526,6 +532,12 @@ class TUIMessageDataProvider: TUIMessageBaseDataProvider {
                     return businessID
                 } else if param.keys.contains("customerServicePlugin"), let src = param["src"] as? String, !src.isEmpty {
                     return "\("customerServicePlugin")\(src)"
+                } else if param.keys.contains("chatbotPlugin") {
+                    // Handle chatbot plugin messages
+                    if let srcValue = param["src"] as? Double, srcValue == 22 {
+                        return "IgnoreMessage"
+                    }
+                    return "chatbotPlugin"
                 }
             }
         } catch {

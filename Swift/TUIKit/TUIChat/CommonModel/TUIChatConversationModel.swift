@@ -37,7 +37,19 @@ public class TUIChatConversationModel: NSObject {
     @objc public dynamic var otherSideTyping: Bool = false
     
     /// A read receipt is required to send a message, the default is YES
-    public var msgNeedReadReceipt: Bool = true
+    private var _msgNeedReadReceipt: Bool = true
+    public var msgNeedReadReceipt: Bool {
+        get {
+            // AI conversations don't need read receipts
+            if isAIConversation() {
+                return false
+            }
+            return _msgNeedReadReceipt
+        }
+        set {
+            _msgNeedReadReceipt = newValue
+        }
+    }
     
     /// Display the video call button, if the TUICalling component is integrated, the default is YES
     public var enableVideoCall: Bool = true
@@ -61,4 +73,17 @@ public class TUIChatConversationModel: NSObject {
     public var shortcutViewBackgroundColor: UIColor?
     public var shortcutViewHeight: CGFloat = 0.0
     public var shortcutMenuItems: [TUIChatShortcutMenuCellData]?
+    
+    // MARK: - AI Conversation Methods
+    
+    /// Check if this is an AI conversation
+    /// AI conversations are identified by conversation IDs containing or starting with "@RBT#"
+    public func isAIConversation() -> Bool {
+        guard let conversationID = conversationID else {
+            return false
+        }
+        return conversationID.contains("@RBT#") || conversationID.hasPrefix("@RBT#")
+    }
+    
+
 }

@@ -17,13 +17,13 @@ target 'TUIKitDemo' do
   pod 'TUITranslationPlugin_Swift', :path => "../TUIKit/TUITranslationPlugin"
   pod 'TUIVoiceToTextPlugin_Swift', :path => "../TUIKit/TUIVoiceToTextPlugin"
   pod 'TUIEmojiPlugin_Swift', :path => "../TUIKit/TUIEmojiPlugin"
-  pod 'TIMPush', '8.6.7019'
-  pod 'TUIConversationGroupPlugin_Swift', '8.6.7019'
-  pod 'TUIConversationMarkPlugin_Swift', '8.6.7019'
-  pod 'TUIPollPlugin_Swift', '8.6.7019'
-  pod 'TUIGroupNotePlugin_Swift', '8.6.7019'
+  pod 'TIMPush', '8.7.7201'
+  pod 'TUIConversationGroupPlugin_Swift', '8.7.7201'
+  pod 'TUIConversationMarkPlugin_Swift', '8.7.7201'
+  pod 'TUIPollPlugin_Swift', '8.7.7201'
+  pod 'TUIGroupNotePlugin_Swift', '8.7.7201'
   
-  pod 'TXIMSDK_Plus_iOS_XCFramework', '8.6.7019'
+  pod 'TXIMSDK_Plus_iOS_XCFramework', '8.7.7201'
   pod 'TUICallKit_Swift/Professional', '3.1.0.824'
   pod 'TXLiteAVSDK_Professional', '~> 12.4.17856'
   pod 'MJExtension', '3.4.1'
@@ -38,7 +38,7 @@ target 'pushservice' do
   use_frameworks!
   use_modular_headers!
   
-  pod 'TIMPush', '8.6.7019'
+  pod 'TIMPush', '8.7.7201'
   end
   
   #Pods config

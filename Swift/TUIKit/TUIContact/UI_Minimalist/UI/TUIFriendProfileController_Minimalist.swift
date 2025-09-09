@@ -91,8 +91,16 @@ class TUIFriendProfileController_Minimalist: UIViewController, UITableViewDelega
         if let image = headerView.headImg.image {
             param["TUICore_TUIContactExtension_FriendProfileActionMenu_UserIcon"] = image
         }
-        param["TUICore_TUIContactExtension_FriendProfileActionMenu_FilterVideoCall"] = false
-        param["TUICore_TUIContactExtension_FriendProfileActionMenu_FilterAudioCall"] = false
+        // Check if this is an AI conversation
+        let isAIConversation = (userFullInfo.userID ?? "").contains("@RBT#")
+        
+        if isAIConversation {
+            param["TUICore_TUIContactExtension_FriendProfileActionMenu_FilterVideoCall"] = true
+            param["TUICore_TUIContactExtension_FriendProfileActionMenu_FilterAudioCall"] = true
+        } else {
+            param["TUICore_TUIContactExtension_FriendProfileActionMenu_FilterVideoCall"] = false
+            param["TUICore_TUIContactExtension_FriendProfileActionMenu_FilterAudioCall"] = false
+        }
         if let navigationController = navigationController {
             param["TUICore_TUIContactExtension_FriendProfileActionMenu_PushVC"] = navigationController
         }

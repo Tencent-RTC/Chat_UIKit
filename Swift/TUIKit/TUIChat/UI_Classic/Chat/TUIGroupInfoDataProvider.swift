@@ -56,6 +56,14 @@ class TUIGroupInfoDataProvider: NSObject, V2TIMGroupListener {
         loadData()
     }
 
+    func onGrantAdministrator(groupID: String?, opUser: V2TIMGroupMemberInfo!, memberList: [V2TIMGroupMemberInfo]!) {
+        loadData()
+    }
+    
+    func onRevokeAdministrator(groupID: String?, opUser: V2TIMGroupMemberInfo!, memberList: [V2TIMGroupMemberInfo]!) {
+        loadData()
+    }
+    
     func onGroupInfoChanged(groupID: String?, changeInfoList: [V2TIMGroupChangeInfo]) {
         guard groupID == groupID else { return }
         loadData()
@@ -92,15 +100,7 @@ class TUIGroupInfoDataProvider: NSObject, V2TIMGroupListener {
     }
 
     func updateGroupInfo() {
-        V2TIMManager.sharedInstance().getGroupsInfo([groupID]) { [weak self] groupResultList in
-            guard let self = self,
-                  let groupResultList = groupResultList, groupResultList.count == 1 else { return }
-            self.groupInfo = groupResultList[0].info
-            self.setupData()
-        } fail: { [weak self] code, msg in
-            guard let self else { return }
-            self.makeToastError(Int(code), msg: msg ?? "")
-        }
+        loadData();
     }
 
     func makeToastError(_ code: Int, msg: String) {
@@ -188,7 +188,7 @@ class TUIGroupInfoDataProvider: NSObject, V2TIMGroupListener {
             commonData.identifier = groupInfo.groupID
             commonData.signature = groupInfo.notification
 
-            if TUIGroupInfoDataProvider.isMeOwner(groupInfo) || groupInfo.isPrivate() {
+            if canManager() || groupInfo.isPrivate() {
                 commonData.cselector = #selector(didSelectCommon)
                 commonData.showAccessory = true
             }
@@ -242,7 +242,7 @@ class TUIGroupInfoDataProvider: NSObject, V2TIMGroupListener {
                         manageData.showAccessory = true
                         manageData.cselector = #selector(groupProfileExtensionButtonClick(_:))
                         if info.weight == 100 {
-                            if TUIGroupInfoDataProvider.isMeOwner(groupInfo) {
+                            if canManager() {
                                 groupInfoArray.append(manageData)
                             }
                         } else {
@@ -261,7 +261,7 @@ class TUIGroupInfoDataProvider: NSObject, V2TIMGroupListener {
                 let addOptionData = TUICommonTextCellData()
                 addOptionData.key = TUISwift.timCommonLocalizableString("TUIKitGroupProfileJoinType")
 
-                if TUIGroupInfoDataProvider.isMeOwner(groupInfo) {
+                if canManager() {
                     addOptionData.cselector = #selector(didSelectAddOption(_:))
                     addOptionData.showAccessory = true
                 }
@@ -272,7 +272,7 @@ class TUIGroupInfoDataProvider: NSObject, V2TIMGroupListener {
 
                 let inviteOptionData = TUICommonTextCellData()
                 inviteOptionData.key = TUISwift.timCommonLocalizableString("TUIKitGroupProfileInviteType")
-                if TUIGroupInfoDataProvider.isMeOwner(groupInfo) {
+                if canManager() {
                     inviteOptionData.cselector = #selector(didSelectAddOption(_:))
                     inviteOptionData.showAccessory = true
                 }
@@ -344,7 +344,7 @@ class TUIGroupInfoDataProvider: NSObject, V2TIMGroupListener {
                 buttonArray.append(quitButton)
             }
 
-            if Self.isMeSuper(groupInfo) && !TUIGroupConfig.shared.isItemHiddenInGroupConfig(.transfer) {
+            if isSuperAdmin() && !TUIGroupConfig.shared.isItemHiddenInGroupConfig(.transfer) {
                 var param: [String: Any] = [:]
                 param["pushVC"] = delegate?.pushNavigationController()
                 param["groupID"] = groupID.isEmpty ? "" : groupID
@@ -460,10 +460,11 @@ class TUIGroupInfoDataProvider: NSObject, V2TIMGroupListener {
 
     private func getShowMembers(_ members: [TUIGroupMemberCellData]) -> [TUIGroupMemberCellData] {
         var maxCount = TGroupMembersCell_Column_Count * TGroupMembersCell_Row_Count
+        
         if groupInfo?.canInviteMember() ?? false {
             maxCount -= 1
         }
-        if groupInfo?.canRemoveMember() ?? false {
+        if canRemoveMember() {
             maxCount -= 1
         }
         var tmpArray: [TUIGroupMemberCellData] = []
@@ -476,7 +477,7 @@ class TUIGroupInfoDataProvider: NSObject, V2TIMGroupListener {
             add.tag = 1
             tmpArray.append(add)
         }
-        if groupInfo?.canRemoveMember() == true {
+        if canRemoveMember() {
             let delete = TUIGroupMemberCellData()
             delete.avatarImage = TUISwift.tuiContactCommonBundleImage("delete")
             delete.tag = 2
@@ -576,6 +577,18 @@ class TUIGroupInfoDataProvider: NSObject, V2TIMGroupListener {
     func clearAllHistory(succ: @escaping V2TIMSucc, fail: @escaping V2TIMFail) {
         V2TIMManager.sharedInstance().clearGroupHistoryMessage(groupID: groupID, succ: succ, fail: fail)
     }
+    
+    private func canRemoveMember() -> Bool {
+        return selfInfo != nil && TUIGroupInfoDataProvider.isMeOwnerByGroupMemberInfo(selfInfo!)
+    }
+    
+    private func canManager() -> Bool {
+        return selfInfo != nil && TUIGroupInfoDataProvider.isMeOwnerByGroupMemberInfo(selfInfo!)
+    }
+    
+    private func isSuperAdmin() -> Bool {
+        return selfInfo != nil && TUIGroupInfoDataProvider.isMeSuperByGroupMemberInfo(selfInfo!)
+    }
 
     // MARK: - Static Methods
 
@@ -641,11 +654,13 @@ class TUIGroupInfoDataProvider: NSObject, V2TIMGroupListener {
         return markList.contains { $0.intValue == V2TIMConversationMarkType.CONVERSATION_MARK_TYPE_HIDE.rawValue }
     }
 
-    static func isMeOwner(_ groupInfo: V2TIMGroupInfo) -> Bool {
-        return groupInfo.owner == V2TIMManager.sharedInstance().getLoginUser() || groupInfo.role == V2TIMGroupMemberRole.GROUP_MEMBER_ROLE_ADMIN.rawValue
+    static func isMeOwnerByGroupMemberInfo(_ groupMeberFullInfo: V2TIMGroupMemberFullInfo) -> Bool {
+        return groupMeberFullInfo.role == V2TIMGroupMemberRole.GROUP_MEMBER_ROLE_ADMIN.rawValue || groupMeberFullInfo.role == V2TIMGroupMemberRole.GROUP_MEMBER_ROLE_SUPER.rawValue
     }
-
-    static func isMeSuper(_ groupInfo: V2TIMGroupInfo) -> Bool {
-        return groupInfo.owner == V2TIMManager.sharedInstance().getLoginUser() && groupInfo.role == V2TIMGroupMemberRole.GROUP_MEMBER_ROLE_SUPER.rawValue
+    
+    static func isMeSuperByGroupMemberInfo(_ groupMeberFullInfo: V2TIMGroupMemberFullInfo) -> Bool {
+        
+        return groupMeberFullInfo.role == V2TIMGroupMemberRole.GROUP_MEMBER_ROLE_SUPER.rawValue
     }
+    
 }

@@ -197,7 +197,7 @@ class TUIGroupInfoController: UITableViewController, TUIModifyViewDelegate, TUIP
         guard let groupInfo = dataProvider.groupInfo else { return }
         let ac = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
 
-        if groupInfo.isPrivate() || TUIGroupInfoDataProvider.isMeOwner(groupInfo) {
+        if groupInfo.isPrivate() || groupInfo.isMeOwner() {
             ac.addAction(UIAlertAction(title: TUISwift.timCommonLocalizableString("TUIKitGroupProfileEditGroupName"), style: .default) { [weak self] _ in
                 guard let self else { return }
                 let data = TUIModifyViewData()
@@ -214,7 +214,7 @@ class TUIGroupInfoController: UITableViewController, TUIModifyViewDelegate, TUIP
             })
         }
 
-        if TUIGroupInfoDataProvider.isMeOwner(groupInfo) {
+        if groupInfo.isMeOwner() {
             ac.addAction(UIAlertAction(title: TUISwift.timCommonLocalizableString("TUIKitGroupProfileEditAnnouncement"), style: .default) { [weak self] _ in
                 guard let self else { return }
                 let data = TUIModifyViewData()
@@ -229,7 +229,7 @@ class TUIGroupInfoController: UITableViewController, TUIModifyViewDelegate, TUIP
             })
         }
 
-        if TUIGroupInfoDataProvider.isMeOwner(groupInfo) {
+        if groupInfo.isMeOwner() {
             ac.addAction(UIAlertAction(title: TUISwift.timCommonLocalizableString("TUIKitGroupProfileEditAvatar"), style: .default) { [weak self] _ in
                 guard let self else { return }
                 let vc = TUISelectAvatarController()

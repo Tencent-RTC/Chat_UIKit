@@ -1,6 +1,7 @@
 import TIMCommon
 import TUICore
 import UIKit
+import SnapKit
 
 private enum TUIRecordStatus: Int {
     case initial
@@ -22,6 +23,7 @@ protocol TUIInputBarDelegate_Minimalist: AnyObject {
     func inputBarDidDeleteBackward(_ textView: TUIInputBar_Minimalist)
     func inputTextViewShouldBeginTyping(_ textView: UITextView)
     func inputTextViewShouldEndTyping(_ textView: UITextView)
+    func inputBarDidTouchAIInterrupt(_ textView: TUIInputBar_Minimalist)
 }
 
 extension TUIInputBarDelegate_Minimalist {
@@ -37,6 +39,7 @@ extension TUIInputBarDelegate_Minimalist {
     func inputBarDidDeleteBackward(_ textView: TUIInputBar_Minimalist) {}
     func inputTextViewShouldBeginTyping(_ textView: UITextView) {}
     func inputTextViewShouldEndTyping(_ textView: UITextView) {}
+    func inputBarDidTouchAIInterrupt(_ textView: TUIInputBar_Minimalist) {}
 }
 
 class TUIInputBar_Minimalist: UIView, UITextViewDelegate, TUIAudioRecorderDelegate, TUIResponderTextViewDelegate_Minimalist {
@@ -63,6 +66,22 @@ class TUIInputBar_Minimalist: UIView, UITextViewDelegate, TUIAudioRecorderDelega
     var sendTypingStatusTimer: Timer?
     var allowSendTypingStatusByChangeWord: Bool = true
     weak var delegate: TUIInputBarDelegate_Minimalist?
+    
+    // MARK: - AI Conversation Properties
+    private var aiStyleEnabled: Bool = false
+    var aiIsTyping: Bool = false
+    
+    /// AI chat style
+    public var inputBarStyle: TUIInputBarStyle_Minimalist = .default
+    
+    /// AI chat state
+    public var aiState: TUIInputBarAIState_Minimalist = .default
+    
+    /// AI interrupt button
+    public var aiInterruptButton: UIButton!
+    
+    /// AI send button  
+    public var aiSendButton: UIButton!
 
     lazy var recorder: TUIAudioRecorder = {
         let recorder = TUIAudioRecorder()
@@ -91,10 +110,13 @@ class TUIInputBar_Minimalist: UIView, UITextViewDelegate, TUIAudioRecorderDelega
         recordAnimateCoverView = UIImageView()
         recordTipsView = UIView()
         recordTipsLabel = UILabel()
+        aiInterruptButton = UIButton(type: .custom)
+        aiSendButton = UIButton(type: .custom)
 
         super.init(frame: frame)
 
         setupViews()
+        setupAIButtons()
         defaultLayout()
 
         NotificationCenter.default.addObserver(self, selector: #selector(onThemeChanged), name: Notification.Name("TUIDidApplyingThemeChangedNotfication"), object: nil)
@@ -232,6 +254,14 @@ class TUIInputBar_Minimalist: UIView, UITextViewDelegate, TUIAudioRecorderDelega
     func defaultLayout() {
         lineView.frame = CGRect(x: 0, y: 0, width: TUISwift.screen_Width(), height: TUISwift.tLine_Height())
 
+        if inputBarStyle == .ai {
+            layoutAIStyle()
+        } else {
+            layoutDefaultStyle()
+        }
+    }
+    
+    private func layoutDefaultStyle() {
         let iconSize: CGFloat = 24
         moreButton.frame = CGRect(x: TUISwift.kScale390(16), y: TUISwift.kScale390(13), width: iconSize, height: iconSize)
         cameraButton.frame = CGRect(x: TUISwift.screen_Width() - TUISwift.kScale390(16) - iconSize, y: 13, width: iconSize, height: iconSize)
@@ -270,6 +300,9 @@ class TUIInputBar_Minimalist: UIView, UITextViewDelegate, TUIAudioRecorderDelega
                 subview.resetFrameToFitRTL()
             }
         }
+        
+        // Hide AI buttons
+        aiInterruptButton.isHidden = true
     }
 
     func layoutButton(_ height: CGFloat) {
@@ -372,9 +405,11 @@ class TUIInputBar_Minimalist: UIView, UITextViewDelegate, TUIAudioRecorderDelega
     // MARK: - UITextViewDelegate
 
     func textViewDidBeginEditing(_ textView: UITextView) {
-        keyboardButton.isHidden = true
-        micButton.isHidden = false
-        faceButton.isHidden = false
+        if inputBarStyle == .default {
+            keyboardButton.isHidden = true
+            micButton.isHidden = false
+            faceButton.isHidden = false
+        }
 
         isFocusOn = true
         allowSendTypingStatusByChangeWord = true
@@ -397,6 +432,21 @@ class TUIInputBar_Minimalist: UIView, UITextViewDelegate, TUIAudioRecorderDelega
     func textViewDidChange(_ textView: UITextView) {
         if allowSendTypingStatusByChangeWord && isFocusOn && textView.textStorage.tui_getPlainString().count > 0 {
             delegate?.inputTextViewShouldBeginTyping(textView)
+        }
+
+        // AI style: state switching logic
+        if inputBarStyle == .ai {
+            if aiIsTyping {
+                // When AI is typing, always stay in active state
+                setAIState(.active)
+            } else {
+                // When AI is not typing, decide based on user input state
+                if textView.textStorage.tui_getPlainString().count > 0 {
+                    setAIState(.active)
+                } else {
+                    setAIState(.default)
+                }
+            }
         }
 
         if isFocusOn && textView.textStorage.tui_getPlainString().count == 0 {
@@ -423,6 +473,12 @@ class TUIInputBar_Minimalist: UIView, UITextViewDelegate, TUIAudioRecorderDelega
             var textFrame = self.inputTextView.frame
             textFrame.size.height += newHeight - oldHeight
             self.inputTextView.frame = textFrame
+            
+            // Update layout for AI style
+            if self.inputBarStyle == .ai {
+                self.layoutAIStyle()
+            }
+            
             self.layoutButton(newHeight + CGFloat(2 * TTextView_Margin))
         }
     }
@@ -652,4 +708,112 @@ class TUIInputBar_Minimalist: UIView, UITextViewDelegate, TUIAudioRecorderDelega
         resetTextStyle()
         updateTextViewFrame()
     }
+    
+    // MARK: - AI Conversation Methods
+    
+    /// Enable or disable AI conversation style
+    func enableAIStyle(_ enable: Bool) {
+        aiStyleEnabled = enable
+    }
+    
+    /// Set input bar style
+    func setInputBarStyle(_ style: TUIInputBarStyle_Minimalist) {
+        inputBarStyle = style
+        defaultLayout()
+    }
+    
+    /// Set AI state
+    func setAIState(_ state: TUIInputBarAIState_Minimalist) {
+        aiState = state
+        if inputBarStyle == .ai {
+            layoutAIStyle()
+        }
+    }
+    
+    /// Set AI typing state with auto state management
+    func setAITyping(_ typing: Bool) {
+        print("setAITyping: \(typing)")
+        aiIsTyping = typing
+        if inputBarStyle == .ai {
+            layoutAIStyle()
+        }
+    }
+    
+    private func layoutAIStyle() {
+        // Hide default buttons
+        moreButton.isHidden = true
+        cameraButton.isHidden = true
+        micButton.isHidden = true
+        faceButton.isHidden = true
+        keyboardButton.isHidden = true
+        
+        if aiIsTyping {
+            // Show interrupt button inside the input box (right side)
+            let buttonSize: CGFloat = 24
+            let buttonMargin: CGFloat = 8
+            aiInterruptButton.frame = CGRect(
+                x: TUISwift.screen_Width() - TUISwift.kScale390(16) - buttonMargin - buttonSize,
+                y: 7 + (36 - buttonSize) / 2,
+                width: buttonSize,
+                height: buttonSize
+            )
+            aiInterruptButton.isHidden = false
+            
+            // Use full width input box but adjust text container inset to avoid button
+            inputTextView.frame = CGRect(x: TUISwift.kScale390(16), y: 7, width: TUISwift.screen_Width() - TUISwift.kScale390(32), height: 36)
+            let ei = UIEdgeInsets(
+                top: TUISwift.kScale390(9),
+                left: TUISwift.kScale390(16),
+                bottom: TUISwift.kScale390(9),
+                right: buttonSize + buttonMargin * 2
+            )
+            inputTextView.textContainerInset = rtlEdgeInsetsWithInsets(ei)
+        } else {
+            // Hide interrupt button when AI is not typing
+            aiInterruptButton.isHidden = true
+            
+            // Use full width input box with normal padding
+            inputTextView.frame = CGRect(x: TUISwift.kScale390(16), y: 7, width: TUISwift.screen_Width() - TUISwift.kScale390(32), height: 36)
+            let ei = UIEdgeInsets(
+                top: TUISwift.kScale390(9),
+                left: TUISwift.kScale390(16),
+                bottom: TUISwift.kScale390(9),
+                right: TUISwift.kScale390(30)
+            )
+            inputTextView.textContainerInset = rtlEdgeInsetsWithInsets(ei)
+        }
+        
+        if TUISwift.isRTL() {
+            for subview in subviews {
+                subview.resetFrameToFitRTL()
+            }
+        }
+    }
+    
+    // MARK: - AI Setup Methods
+    
+    private func setupAIButtons() {
+        // AI interrupt button - designed to be placed inside input box
+        aiInterruptButton.setBackgroundImage(TUISwift.tuiChatBundleThemeImage("",defaultImage: "chat_ai_interrupt_icon_white"), for: .normal)
+        aiInterruptButton.titleLabel?.font = UIFont.systemFont(ofSize: 12)
+        aiInterruptButton.layer.cornerRadius = 12
+        aiInterruptButton.layer.masksToBounds = true
+        aiInterruptButton.addTarget(self, action: #selector(onAIInterruptButtonClicked), for: .touchUpInside)
+        aiInterruptButton.isHidden = true
+        addSubview(aiInterruptButton)
+        
+        // Remove AI send button - not needed for minimalist style
+        // aiSendButton is no longer used in minimalist design
+    }
+    
+
+
+    
+    // MARK: - AI Button Actions
+    
+    @objc private func onAIInterruptButtonClicked() {
+        delegate?.inputBarDidTouchAIInterrupt(self)
+    }
+    
+
 }

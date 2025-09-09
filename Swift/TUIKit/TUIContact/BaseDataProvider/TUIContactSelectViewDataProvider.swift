@@ -25,6 +25,10 @@ class TUIContactSelectViewDataProvider: NSObject {
             guard let self = self, let infoList = infoList else { return }
             var arr: [V2TIMUserFullInfo] = []
             for friend in infoList {
+                // Filter AI friends (userID containing "@RBT#")
+                if friend.userID?.contains("@RBT#") == true {
+                    continue
+                }
                 arr.append(friend.userFullInfo)
             }
             self.fillList(profiles: arr, displayNames: nil)

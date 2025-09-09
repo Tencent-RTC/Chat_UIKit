@@ -64,6 +64,11 @@ class TUIConversationSelectBaseDataProvider: NSObject {
         if conv.groupType == "AVChatRoom" {
             return true
         }
+        // Filter AI conversations (conversations containing "@RBT#")
+        if let conversationID = conv.conversationID,
+           conversationID.contains("@RBT#") {
+            return true
+        }
         return false
     }
 

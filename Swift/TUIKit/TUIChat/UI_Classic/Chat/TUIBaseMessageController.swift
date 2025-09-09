@@ -23,6 +23,10 @@ public class TUIBaseMessageController: UITableViewController, TUIMessageCellDele
     var hasCoverPage: Bool = false
     var currentVoiceMsg: TUIVoiceMessageCellData?
 
+    // MARK: - AI Streaming Callback
+
+    var steamCellFinishedBlock: ((Bool, TUIMessageCellData) -> Void)?
+
     lazy var messageCellConfig: TUIMessageCellConfig = {
         let config = TUIMessageCellConfig()
         return config
@@ -510,6 +514,18 @@ public class TUIBaseMessageController: UITableViewController, TUIMessageCellDele
                     isAllowScroll2Bottom = true
                 }
             }
+
+            // Handle AI streaming callback - only for chatbot cells
+            if let steamCellFinishedBlock = steamCellFinishedBlock {
+                if let isFinished = param?["isFinished"] as? String {
+                    if isFinished == "1" {
+                        steamCellFinishedBlock(true, data)
+                    } else {
+                        steamCellFinishedBlock(false, data)
+                    }
+                }
+            }
+
             messageCellConfig.removeHeightCacheOfMessageCellData(data)
             if let msgID = data.innerMessage?.msgID {
                 reloadAndScrollToBottomOfMessage(msgID, needScroll: isAllowScroll2Bottom)
@@ -893,7 +909,14 @@ public class TUIBaseMessageController: UITableViewController, TUIMessageCellDele
             return
         }
         menuUIMsg = data
+
         if let chatPopMenu = chatPopMenu, chatPopMenu.superview != nil {
+            return
+        }
+
+        // Handle AI conversation long press
+        if let conversationData = conversationData, conversationData.isAIConversation() {
+            handleAIConversationLongPress(cell)
             return
         }
 
@@ -1265,6 +1288,11 @@ public class TUIBaseMessageController: UITableViewController, TUIMessageCellDele
     }
 
     public func onSelectReadReceipt(_ data: TUIMessageCellData) {
+        // AI conversations don't support read receipts
+        if let conversationData = conversationData, conversationData.isAIConversation() {
+            return
+        }
+
         if let msg = data.innerMessage, let groupID = data.innerMessage?.groupID, !groupID.isEmpty {
             // Navigate to group message read VC. Should get members first.
             TUIMessageDataProvider.getMessageReadReceipt([msg], succ: { [weak self] receiptList in
@@ -1357,10 +1385,10 @@ public class TUIBaseMessageController: UITableViewController, TUIMessageCellDele
 
         if let txtCell = sender as? TUITextMessageCell {
             content = txtCell.selectContent ?? ""
-        }
-
-        if let replyMsg = sender as? TUIReplyMessageCellData {
-            content = replyMsg.selectContent ?? ""
+        } else if let replyCell = sender as? TUIReplyMessageCell {
+            content = replyCell.selectContent ?? ""
+        } else if let referenceCell = sender as? TUIReferenceMessageCell {
+            content = referenceCell.selectContent ?? ""
         }
 
         if !content.isEmpty {
@@ -1376,7 +1404,7 @@ public class TUIBaseMessageController: UITableViewController, TUIMessageCellDele
             guard let self else { return }
             self.delegate?.didHideMenu(self)
         }, FailBlock: { _, desc in
-            assertionFailure(desc ?? "")
+            print("revoke failed: \(desc ?? "")")
         })
     }
 
@@ -1685,6 +1713,127 @@ public class TUIBaseMessageController: UITableViewController, TUIMessageCellDele
             NotificationCenter.default.post(name: NSNotification.Name(TUIMessageMediaViewDeviceOrientationChangeNotification), object: nil)
         } else {
             // Fallback on earlier versions
+        }
+    }
+
+    // MARK: - AI Typing Message Management
+
+    func createAITypingMessage() {
+        // Check and remove any existing AI placeholder typing message first
+        if let conversationID = conversationData?.conversationID {
+            if let currentAITypingMessage = TUIAIPlaceholderTypingMessageManager.shared.getAIPlaceholderTypingMessage(forConversation: conversationID) {
+                // Find the index of the existing AI typing message
+                if let aiTypingIndex = messageDataProvider?.uiMsgs.firstIndex(of: currentAITypingMessage) {
+                    // Remove the existing AI typing placeholder message
+                    messageDataProvider?.dataSource?.dataProviderDataSourceWillChange(messageDataProvider!)
+                    messageDataProvider?.removeUIMsg(currentAITypingMessage)
+                    messageDataProvider?.dataSource?.dataProviderDataSourceChange(messageDataProvider!, withType: .delete, atIndex: UInt(aiTypingIndex), animation: true)
+                    messageDataProvider?.dataSource?.dataProviderDataSourceDidChange(messageDataProvider!)
+                }
+                
+                // Remove from manager
+                TUIAIPlaceholderTypingMessageManager.shared.removeAIPlaceholderTypingMessage(forConversation: conversationID)
+            }
+        }
+        
+        // Create AI typing placeholder message using TUIChatbotMessagePlaceholderCellData
+        let aiTypingData = TUIChatbotMessagePlaceholderCellData.createAIPlaceholderCellData()
+
+        // Send as placeholder message
+        sendPlaceHolderUIMessage(aiTypingData)
+
+        // Store reference in global manager for later replacement
+        if let conversationID = conversationData?.conversationID {
+            TUIAIPlaceholderTypingMessageManager.shared.setAIPlaceholderTypingMessage(aiTypingData, forConversation: conversationID)
+        }
+
+        // Note: AI typing message will be automatically removed when real AI response is received
+        // via onRecvNewMessage in TUIMessageBaseDataProvider
+    }
+
+    func restoreAITypingMessageIfNeeded() {
+        guard let lastObj = messageDataProvider?.uiMsgs.last,
+              let conversationID = conversationData?.conversationID else { return }
+
+        if TUIAIPlaceholderTypingMessageManager.shared.hasAIPlaceholderTypingMessage(forConversation: conversationID) {
+            if let existingAIPlaceHolderMessage = TUIAIPlaceholderTypingMessageManager.shared.getAIPlaceholderTypingMessage(forConversation: conversationID) {
+                let lastObjisTUIChatbotMessageCellData = lastObj is TUIChatbotMessageCellData
+                let isSuccess = lastObj.status != .fail
+
+                if !lastObjisTUIChatbotMessageCellData && isSuccess {
+                    // Add the existing AI typing message to current message list
+                    sendPlaceHolderUIMessage(existingAIPlaceHolderMessage)
+                } else {
+                    TUIAIPlaceholderTypingMessageManager.shared.removeAIPlaceholderTypingMessage(forConversation: conversationID)
+                }
+            }
+        }
+    }
+
+    /// Handle AI conversation long press - only show copy, forward, delete options for AI conversations
+    private func handleAIConversationLongPress(_ cell: TUIMessageCell) {
+        guard let data = cell.messageData else { return }
+
+        // Create menu without emoji view for AI conversations
+        let menu = TUIChatPopMenu(hasEmojiView: false, frame: .zero)
+        chatPopMenu = menu
+        menu.targetCellData = data
+        menu.targetCell = cell
+
+        // Add AI-specific actions (only copy, forward, delete)
+        addChatAIActionToCell(cell, ofMenu: menu)
+
+        // Setup menu position and display
+        if let keyWindow = TUITool.applicationKeywindow() {
+            let frame = keyWindow.convert(cell.container.frame, from: cell)
+
+            var topMarginByCustomView: CGFloat = 0
+            if let topMargin = delegate?.getTopMarginByCustomView() {
+                topMarginByCustomView = topMargin
+            }
+
+            menu.setArrawPosition(
+                CGPoint(x: frame.origin.x + frame.size.width * 0.5, y: frame.origin.y - 5 - topMarginByCustomView),
+                adjustHeight: frame.size.height + 5
+            )
+            menu.showInView(tableView)
+        }
+    }
+
+    /// Add AI-specific actions to menu (copy, forward, delete only)
+    private func addChatAIActionToCell(_ cell: TUIMessageCell, ofMenu menu: TUIChatPopMenu) {
+        // Setup popAction
+        let copyAction = setupCopyAction(cell)
+        let forwardAction = setupForwardAction(cell)
+        let deleteAction = setupDeleteAction(cell)
+
+        let data = cell.messageData
+        guard let imMsg = data?.innerMessage else { return }
+
+        let isMsgSendSucceed = imMsg.status == .MSG_STATUS_SEND_SUCC
+        let isContentModerated = imMsg.hasRiskContent
+
+        // Add copy action for text-based messages without risk content
+        if let copyAction = copyAction,
+           data is TUITextMessageCellData || data is TUIReplyMessageCellData || data is TUIReferenceMessageCellData,
+           !isContentModerated
+        {
+            menu.addAction(copyAction)
+        }
+
+        // Add delete action
+        if let deleteAction = deleteAction {
+            menu.addAction(deleteAction)
+        }
+
+        // Add forward action for successful messages without risk content
+        if let forwardAction = forwardAction,
+           let data = data,
+           canForward(data),
+           isMsgSendSucceed,
+           !isContentModerated
+        {
+            menu.addAction(forwardAction)
         }
     }
 }

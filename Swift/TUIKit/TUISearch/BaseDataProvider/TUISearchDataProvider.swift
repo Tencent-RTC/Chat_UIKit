@@ -164,21 +164,8 @@ class TUISearchDataProvider: NSObject {
                 }
 
                 var why = ""
-                if let friendMark = result.friendInfo.friendRemark?.lowercased(), friendMark.contains(keyword.lowercased()) {
-                    why = friendMark
-                } else if let nickName = result.friendInfo.userFullInfo.nickName?.lowercased(), nickName.contains(keyword.lowercased()) {
-                    why = nickName
-                } else {
-                    if let userID = result.friendInfo?.userID?.lowercased(), userID.contains(keyword.lowercased()) {
-                        why = userID
-                    }
-                }
-                if !why.isEmpty {
-                    if why == title {
-                        why = ""
-                    } else {
-                        why = String(format: TUISwift.timCommonLocalizableString("TUIKitSearchResultMatchFormat"), why)
-                    }
+                if let userID = result.friendInfo?.userID?.lowercased() {
+                    why = userID
                 }
 
                 cellModel.titleAttributeString = TUISearchDataProvider.attributeString(withText: title, key: keyword)

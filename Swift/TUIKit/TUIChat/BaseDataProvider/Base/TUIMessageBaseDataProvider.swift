@@ -144,6 +144,23 @@ class TUIMessageBaseDataProvider: NSObject, V2TIMAdvancedMsgListener, V2TIMGroup
             guard let self else { return }
             self.dataSource?.dataProviderDataSourceWillChange(self)
             autoreleasepool {
+                // Check if this is a TUIChatbotMessageCellData and remove AI typing placeholder if exists
+                if let newUIMsg = uiMsgCellDataArray.first as? TUIChatbotMessageCellData {
+                    if let conversationID = self.conversationModel?.conversationID {
+                        if let currentAITypingMessage = TUIAIPlaceholderTypingMessageManager.shared.getAIPlaceholderTypingMessage(forConversation: conversationID) {
+                            // Find the index of the AI typing message before removing it
+                            if let aiTypingIndex = self.uiMsgs.firstIndex(of: currentAITypingMessage) {
+                                // Remove the AI typing placeholder message
+                                self.removeUIMsg(currentAITypingMessage)
+                                // Notify data source about the deletion
+                                self.dataSource?.dataProviderDataSourceChange(self, withType: .delete, atIndex: UInt(aiTypingIndex), animation: true)
+                            }
+                            // Remove from global manager
+                            TUIAIPlaceholderTypingMessageManager.shared.removeAIPlaceholderTypingMessage(forConversation: conversationID)
+                        }
+                    }
+                }
+                
                 for uiMsg in uiMsgCellDataArray {
                     self.addUIMsg(uiMsg)
                     self.dataSource?.dataProviderDataSourceChange(self, withType: .insert, atIndex: UInt(self.uiMsgs.count - 1), animation: true)
@@ -207,6 +224,11 @@ class TUIMessageBaseDataProvider: NSObject, V2TIMAdvancedMsgListener, V2TIMGroup
                 data.messageReceipt = receipt
                 if let receiptMsgID = receipt.msgID, let groupID = receipt.groupID {
                     self.dataSource?.dataProvider(self, receiveReadMsgWithGroupID: groupID, msgID: receiptMsgID, readCount: UInt(receipt.readCount), unreadCount: UInt(receipt.unreadCount))
+                }
+                else if let userID = receipt.userID {
+                    // C2C message read receipt
+                    let timestamp = time_t(receipt.timestamp)
+                    self.dataSource?.dataProvider(self, receiveReadMsgWithUserID: userID, time: timestamp)
                 }
             }
         }
@@ -954,9 +976,11 @@ class TUIMessageBaseDataProvider: NSObject, V2TIMAdvancedMsgListener, V2TIMGroup
             pushInfo?.androidVIVOCategory = "IM"
         }
         
-        if let groupType = conversationData.groupType, let groupID = conversationData.groupID, self.isGroupCommunity(groupType, groupID: groupID) || self.isGroupAVChatRoom(groupType) {
+        if isGroupCommunity(groupType: conversationData.groupType ?? "", groupID: conversationData.groupID ?? "")
+            || isGroupAVChatRoom(groupType: conversationData.groupType ?? "") {
             message.needReadReceipt = false
         }
+
         
         if !conversationID.isEmpty {
             V2TIMManager.sharedInstance().markConversation(conversationIDList: [conversationID], markType: NSNumber(value: V2TIMConversationMarkType.CONVERSATION_MARK_TYPE_HIDE.rawValue), enableMark: false, succ: nil, fail: nil)
@@ -997,11 +1021,11 @@ class TUIMessageBaseDataProvider: NSObject, V2TIMAdvancedMsgListener, V2TIMGroup
         })
     }
     
-    static func isGroupCommunity(_ groupType: String, groupID: String) -> Bool {
+    static func isGroupCommunity(groupType: String, groupID: String) -> Bool {
         return groupType == "Community" || groupID.hasPrefix("@TGS#_")
     }
-    
-    static func isGroupAVChatRoom(_ groupType: String) -> Bool {
+
+    static func isGroupAVChatRoom(groupType: String) -> Bool {
         return groupType == "AVChatRoom"
     }
     

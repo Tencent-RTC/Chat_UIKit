@@ -84,11 +84,24 @@ public class TUIChatShortcutMenuCell: UICollectionViewCell {
     }
 }
 
-public class TUIChatShortcutMenuView: UIView, UICollectionViewDelegate, UICollectionViewDataSource {
+public class TUIChatShortcutMenuView: UIView, UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     public var viewHeight: CGFloat = 0
     public var itemHorizontalSpacing: CGFloat = 0
-    private var collectionView: UICollectionView!
+
     private var dataSource: [TUIChatShortcutMenuCellData]
+
+    lazy var collectionView: UICollectionView = {
+        let layout = UICollectionViewFlowLayout()
+        layout.scrollDirection = .horizontal
+        let collectionView = UICollectionView(frame: bounds, collectionViewLayout: layout)
+        collectionView.delegate = self
+        collectionView.dataSource = self
+        collectionView.isScrollEnabled = true
+        collectionView.backgroundColor = .clear
+        collectionView.showsHorizontalScrollIndicator = false
+        collectionView.register(TUIChatShortcutMenuCell.self, forCellWithReuseIdentifier: "menuCell")
+        return collectionView
+    }()
 
     public init(dataSource: [TUIChatShortcutMenuCellData]) {
         self.dataSource = dataSource
@@ -107,19 +120,11 @@ public class TUIChatShortcutMenuView: UIView, UICollectionViewDelegate, UICollec
             make.left.top.right.equalToSuperview()
             make.height.equalTo(viewHeight > 0 ? viewHeight : 46)
         }
-        collectionView.mm__fill()
-    }
-
-    private func setupCollectionView() {
-        let layout = UICollectionViewFlowLayout()
-        layout.scrollDirection = .horizontal
-        collectionView = UICollectionView(frame: bounds, collectionViewLayout: layout)
-        collectionView.delegate = self
-        collectionView.dataSource = self
-        collectionView.isScrollEnabled = true
-        collectionView.backgroundColor = .clear
-        collectionView.showsHorizontalScrollIndicator = false
-        collectionView.register(TUIChatShortcutMenuCell.self, forCellWithReuseIdentifier: "menuCell")
+        collectionView.snp.remakeConstraints { make in
+            make.edges.equalToSuperview()
+        }
+        layoutIfNeeded()
+        collectionView.reloadData()
     }
 
     // MARK: - UICollectionViewDataSource & Delegate
@@ -146,15 +151,15 @@ public class TUIChatShortcutMenuView: UIView, UICollectionViewDelegate, UICollec
         return CGSize(width: cellData.calcSize().width + 12, height: cellData.calcSize().height)
     }
 
-    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, insetForSectionAt section: Int) -> UIEdgeInsets {
+    public func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, insetForSectionAt section: Int) -> UIEdgeInsets {
         return UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
     }
 
-    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, minimumInteritemSpacingForSectionAt section: Int) -> CGFloat {
+    public func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, minimumInteritemSpacingForSectionAt section: Int) -> CGFloat {
         return 0
     }
 
-    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, minimumLineSpacingForSectionAt section: Int) -> CGFloat {
+    public func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, minimumLineSpacingForSectionAt section: Int) -> CGFloat {
         return 0
     }
 

@@ -59,7 +59,12 @@ class TUIProfileController: UITableViewController, UIActionSheetDelegate, V2TIMS
             avatarData.key = TUISwift.timCommonLocalizableString("ProfilePhoto")
             avatarData.showAccessory = true
             avatarData.cselector = #selector(didSelectAvatar)
-            avatarData.avatarUrl = URL(string: profile.faceURL ?? "")!
+            if let faceURLString = profile.faceURL, !faceURLString.isEmpty,
+               let url = URL(string: faceURLString) {
+                avatarData.avatarUrl = url
+            } else {
+                avatarData.avatarUrl = nil
+            }
             data.append([avatarData])
 
             let nicknameData = TUICommonTextCellData()
@@ -70,7 +75,7 @@ class TUIProfileController: UITableViewController, UIActionSheetDelegate, V2TIMS
 
             let IDData = TUICommonTextCellData()
             IDData.key = TUISwift.timCommonLocalizableString("ProfileAccount")
-            IDData.value = "\(profile.userID)      "
+            IDData.value = profile.userID ?? ""
             IDData.showAccessory = false
             data.append([nicknameData, IDData])
 

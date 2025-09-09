@@ -191,7 +191,7 @@ public class ConversationController_Minimalist: UIViewController, TUIConversatio
         }
     }
     
-    func pushToChatViewController(groupID: String?, userID: String?) {
+    @objc(pushToChatViewController:userID:) func pushToChatViewController(groupID: String?, userID: String?) {
         guard let topVc = navigationController?.topViewController else { return }
         var isSameTarget = false
         var isInChat = false

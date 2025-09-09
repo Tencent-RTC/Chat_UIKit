@@ -80,6 +80,10 @@ public class TUIBaseChatViewController: UIViewController, TUIBaseMessageControll
         }
         set {}
     }
+    
+    // AI interrupt message properties
+    var lastSendInterruptMessageTime: TimeInterval = 0
+    var receivingChatbotMessage: TUIMessageCellData?
 
     public var conversationData: TUIChatConversationModel? {
         didSet {
@@ -142,6 +146,7 @@ public class TUIBaseChatViewController: UIViewController, TUIBaseMessageControll
         setupMessageController()
         setupInputMoreMenu()
         setupInputController()
+        setupShortcutView()
 
         let userInfo = ["TUIKitNotification_onMessageVCBottomMarginChanged_Margin": 0]
         NotificationCenter.default.post(name: NSNotification.Name("TUIKitNotification_onMessageVCBottomMarginChanged"), object: nil, userInfo: userInfo)
@@ -309,6 +314,7 @@ public class TUIBaseChatViewController: UIViewController, TUIBaseMessageControll
         NotificationCenter.default.addObserver(self, selector: #selector(appWillResignActive(_:)), name: NSNotification.Name("UIApplicationWillResignActiveNotification"), object: nil)
 
         TUICore.registerEvent("TUICore_TUIContactNotify", subKey: "TUICore_TUIContactNotify_UpdateConversationBackgroundImageSubKey", object: self)
+        TUICore.registerEvent("TUICore_TUIChatNotify", subKey: "TUICore_TUIChatNotify_SendMessageSubKey", object: self)
     }
 
     @objc func appWillResignActive(_ noti: Notification) {
@@ -353,6 +359,20 @@ public class TUIBaseChatViewController: UIViewController, TUIBaseMessageControll
         let itemSize = CGSize(width: 25, height: 25)
         var rightBarButtonList = [UIBarButtonItem]()
         var param = [String: Any]()
+        
+        // Check if this is an AI conversation and add AI clear button
+        if conversationData.isAIConversation() {
+            let button = UIButton(frame: CGRect(x: 0, y: 0, width: itemSize.width, height: itemSize.height))
+            let clearIcon = TUIImageCache.sharedInstance().getResourceFromCache(TUISwift.tuiChatImagePath("chat_ai_clear_icon"))
+            button.setImage(clearIcon, for: .normal)
+            button.widthAnchor.constraint(equalToConstant: itemSize.width).isActive = true
+            button.heightAnchor.constraint(equalToConstant: itemSize.height).isActive = true
+            button.addTarget(self, action: #selector(rightBarAIClearButtonClick(_:)), for: .touchUpInside)
+            let rightItem = UIBarButtonItem(customView: button)
+            navigationItem.rightBarButtonItems = [rightItem]
+            return
+        }
+        
         if let userID = conversationData.userID, !userID.isEmpty {
             param["TUICore_TUIChatExtension_NavigationMoreItem_UserID"] = userID
         } else if let groupID = conversationData.groupID, !groupID.isEmpty {
@@ -407,6 +427,57 @@ public class TUIBaseChatViewController: UIViewController, TUIBaseMessageControll
         }
 
         onClicked(param)
+    }
+
+    @objc func rightBarAIClearButtonClick(_ button: UIButton) {
+        inputController.reset()
+        // Check if AI is currently typing
+        if let aiIsTyping = inputController.inputBar?.aiIsTyping, aiIsTyping {
+            showHudMsgText(TUISwift.timCommonLocalizableString("TUIKitAITyping"))
+            return
+        }
+        
+        guard let userID = conversationData?.userID, !userID.isEmpty else {
+            return
+        }
+        
+        let alertController = UIAlertController(
+            title: nil,
+            message: TUISwift.timCommonLocalizableString("TUIKitClearAllChatHistoryTips"),
+            preferredStyle: .alert
+        )
+        
+        let confirmAction = UIAlertAction(
+            title: TUISwift.timCommonLocalizableString("Confirm"),
+            style: .destructive
+        ) { [weak self] _ in
+            guard let self = self else { return }
+            
+            V2TIMManager.sharedInstance().clearC2CHistoryMessage(userID:userID) {
+                // Success
+                TUICore.notifyEvent(
+                    "TUICore_TUIConversationNotify",
+                    subKey: "TUICore_TUIConversationNotify_ClearConversationUIHistorySubKey",
+                    object: self,
+                    param: nil
+                )
+                TUITool.makeToast(TUISwift.timCommonLocalizableString("Done"))
+            } fail: { code, desc in
+                // Failure
+                TUITool.makeToastError(Int(code), msg: desc)
+            }
+        }
+        
+        let cancelAction = UIAlertAction(
+            title: TUISwift.timCommonLocalizableString("Cancel"),
+            style: .cancel,
+            handler: nil
+        )
+        
+        alertController.addAction(confirmAction)
+        alertController.addAction(cancelAction)
+        
+        present(alertController, animated: true, completion: nil)
     }
 
     func setupCustomTopView() {
@@ -470,6 +541,34 @@ public class TUIBaseChatViewController: UIViewController, TUIBaseMessageControll
         addChild(inputController)
         view.addSubview(inputController.view)
         inputController.view.isHidden = !TUIChatConfig.shared.enableMainPageInputBar
+        
+        // AI conversation style setup
+        if let data = conversationData, data.isAIConversation() {
+            inputController.enableAIStyle(true)
+            
+            // Check if there's existing AI typing message
+            if let conversationID = data.conversationID {
+                let currentAITypingMessage = TUIAIPlaceholderTypingMessageManager.shared.getAIPlaceholderTypingMessage(forConversation: conversationID)
+                if currentAITypingMessage != nil {
+                    setAIStartTyping()
+                }
+            }
+            
+            // Setup streaming message callback
+            messageController?.steamCellFinishedBlock = { [weak self] finished, cellData in
+                guard let self = self else { return }
+                if !finished {
+                    self.setAIStartTyping()
+                    self.receivingChatbotMessage = cellData
+                } else {
+                    self.setAIFinishTyping()
+                    // Clear the receiving chatbot message
+                    self.receivingChatbotMessage = nil
+                    
+                }
+            }
+        }
+        
         if let data = conversationData {
             moreMenus = dataProvider.getMoreMenuCellDataArray(groupID: data.groupID ?? "", userID: data.userID ?? "", conversationModel: data, actionController: self)
         }
@@ -773,7 +872,7 @@ public class TUIBaseChatViewController: UIViewController, TUIBaseMessageControll
             if let conversationID = param?["TUICore_TUIContactNotify_UpdateConversationBackgroundImageSubKey_ConversationID"] as? String, !conversationID.isEmpty {
                 updateBackgroundImageUrl(byConversationID: conversationID)
             }
-        } else if key == "TUICore_TUIPluginNotify" && subKey == "TUICore_TUIPluginNotify_PluginViewDidAddToSuperview" {
+        }  else if key == "TUICore_TUIPluginNotify" && subKey == "TUICore_TUIPluginNotify_PluginViewDidAddToSuperview" {
             if let height = param?["TUICore_TUIPluginNotify_PluginViewDidAddToSuperviewSubKey_PluginViewHeight"] as? Float, let messageController = messageController {
                 messageController.view.frame = CGRect(
                     x: 0,
@@ -795,6 +894,18 @@ public class TUIBaseChatViewController: UIViewController, TUIBaseMessageControll
 
                 let userInfo: [String: Any] = ["TUIKitNotification_onMessageVCBottomMarginChanged_Margin": height]
                 NotificationCenter.default.post(name: Notification.Name("TUIKitNotification_onMessageVCBottomMarginChanged"), object: nil, userInfo: userInfo)
+            }
+        }
+        else if key == "TUICore_TUIChatNotify" && subKey == "TUICore_TUIChatNotify_SendMessageSubKey" {
+            let code = param?["TUICore_TUIChatNotify_SendMessageSubKey_Code"] as? Int ?? -1
+            // let desc = param?["TUICore_TUIChatNotify_SendMessageSubKey_Desc"] as? String
+            let isAIConversation = conversationData?.isAIConversation() ?? false
+            
+            if code == 0 && isAIConversation {
+                // Create AI placeholder message immediately when user sends message
+                if(inputController.inputBar?.aiIsTyping == true) {
+                    self.messageController?.createAITypingMessage()
+                }
             }
         }
     }
@@ -864,7 +975,18 @@ public class TUIBaseChatViewController: UIViewController, TUIBaseMessageControll
     }
 
     func inputController(_ inputController: TUIInputController, didSendMessage message: V2TIMMessage) {
-        messageController?.sendMessage(message)
+        // Handle AI conversation message sending
+        if let data = conversationData, data.isAIConversation() {
+            if inputController.inputBar?.aiIsTyping == true {
+                showHudMsgText(TUISwift.timCommonLocalizableString("TUIKitAITyping"))
+                return
+            }
+            inputController.setAITyping(true)
+            messageController?.sendMessage(message)
+            
+        } else {
+            messageController?.sendMessage(message)
+        }
     }
 
     func inputController(_ inputController: TUIInputController, didSelectMoreCell cell: TUIInputMoreCell) {
@@ -1441,5 +1563,226 @@ public class TUIBaseChatViewController: UIViewController, TUIBaseMessageControll
 
     public func onProvideFileError(_ errorMessage: String) {
         TUITool.makeToast(errorMessage)
+    }
+    
+    // MARK: - AI Conversation Methods
+    
+    
+    /// Handle AI interrupt action
+    func inputControllerDidTouchAIInterrupt(_ inputController: TUIInputController) {
+        // Send interrupt message
+        sendChatbotInterruptMessage()
+    }
+        
+    func setAIStartTyping() {
+        if let data = conversationData, data.isAIConversation() {
+            inputController?.setAITyping(true)
+        }
+    }
+    
+    func setAIFinishTyping() {
+        if let data = conversationData, data.isAIConversation() {
+            inputController?.setAITyping(false)
+        }
+    }
+    
+    func generateMessageKey(_ messageData: TUIMessageCellData) -> String {
+        guard let message = messageData.innerMessage else {
+            return ""
+        }
+        
+        let msgSeq = message.seq
+        let random = message.random
+        let timestamp = message.timestamp?.timeIntervalSince1970 ?? 0
+        
+        return String(format: "%llu_%llu_%.0f", msgSeq, random, timestamp)
+    }
+    
+    func buildChatbotInterruptMessage(_ messageData: TUIMessageCellData) -> V2TIMMessage? {
+        guard messageData.innerMessage != nil else {
+            return nil
+        }
+        
+        // Build interrupt message content
+        let interruptMessageContent: [String: Any] = [
+            "chatbotPlugin": 2,
+            "src": 22,
+            "msgKey": generateMessageKey(messageData)
+        ]
+        
+        // Convert to JSON
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: interruptMessageContent, options: []),
+              let jsonString = String(data: jsonData, encoding: .utf8) else {
+            print("Failed to create interrupt message JSON")
+            return nil
+        }
+        
+        // Create custom message
+        let message = V2TIMManager.sharedInstance().createCustomMessage(data: jsonData)
+        message?.isExcludedFromLastMessage = true
+        message?.isExcludedFromUnreadCount = true
+        return message
+    }
+    
+    func sendChatbotInterruptMessage() {
+        // Check send interval (1 second minimum)
+        let currentTime = Date().timeIntervalSince1970
+        let sendInterruptMessageInterval: TimeInterval = 1.0
+        
+        if lastSendInterruptMessageTime != 0 &&
+           currentTime - lastSendInterruptMessageTime < sendInterruptMessageInterval {
+            return
+        }
+        
+        lastSendInterruptMessageTime = currentTime
+        
+        guard let messageData = receivingChatbotMessage else {
+            print("No receiving chatbot message found")
+            self.setAIFinishTyping();
+            return
+        }
+        
+        guard let message = buildChatbotInterruptMessage(messageData) else {
+            print("Failed to build interrupt message")
+            self.setAIFinishTyping();
+            return
+        }
+        
+        // Determine conversation type
+        var groupID: String?
+        var userID: String?
+        
+        if let groupId = conversationData?.groupID, !groupId.isEmpty {
+            groupID = groupId
+        } else {
+            userID = conversationData?.userID
+        }
+        
+        // Send interrupt message
+        V2TIMManager.sharedInstance().sendMessage(message: message, receiver: userID, groupID: groupID, priority: .PRIORITY_DEFAULT, onlineUserOnly: true, offlinePushInfo: nil, progress: nil) {
+            print("sendChatbotInterruptMessage success")
+
+        }   fail: {  [weak self] code, desc in
+            guard let self = self else { return }
+            print("sendChatbotInterruptMessage failed \(code) \(desc ?? "")")
+            self.setAIFinishTyping();
+        };
+
+    
+    }
+    
+    // MARK: - HUD Methods
+    
+    /// HUD container properties
+    private var hudContainerView: UIView?
+    private var hudBackgroundView: UIView?
+    private var hudLabel: UILabel?
+    
+    /// Show HUD message with text
+    /// - Parameter msgText: The message text to display
+    func showHudMsgText(_ msgText: String?) {
+        hideHud()
+        
+        guard let msgText = msgText, !msgText.isEmpty else {
+            return
+        }
+        
+        // Create container view
+        hudContainerView = UIView()
+        hudContainerView?.backgroundColor = UIColor.clear
+        hudContainerView?.alpha = 0.0
+        view.addSubview(hudContainerView!)
+        
+        // Create background view with design specs
+        hudBackgroundView = UIView()
+        hudBackgroundView?.backgroundColor = UIColor(red: 0.92, green: 0.95, blue: 1.0, alpha: 1.0) // #EBF3FF
+        hudBackgroundView?.layer.cornerRadius = 6.0
+        hudBackgroundView?.layer.masksToBounds = false
+        
+        // Add shadow effects as per design
+        hudBackgroundView?.layer.shadowColor = UIColor.black.cgColor
+        hudBackgroundView?.layer.shadowOffset = CGSize(width: 0, height: 8)
+        hudBackgroundView?.layer.shadowRadius = 13
+        hudBackgroundView?.layer.shadowOpacity = 0.06
+        
+        // Additional shadow layers for multiple shadow effect
+        let shadowLayer1 = CALayer()
+        shadowLayer1.shadowColor = UIColor.black.cgColor
+        shadowLayer1.shadowOffset = CGSize(width: 0, height: 12)
+        shadowLayer1.shadowRadius = 13
+        shadowLayer1.shadowOpacity = 0.06
+        hudBackgroundView?.layer.insertSublayer(shadowLayer1, at: 0)
+        
+        let shadowLayer2 = CALayer()
+        shadowLayer2.shadowColor = UIColor.black.cgColor
+        shadowLayer2.shadowOffset = CGSize(width: 0, height: 1)
+        shadowLayer2.shadowRadius = 2.5
+        shadowLayer2.shadowOpacity = 0.06
+        hudBackgroundView?.layer.insertSublayer(shadowLayer2, at: 0)
+        
+        hudContainerView?.addSubview(hudBackgroundView!)
+        
+        // Create label with design specs
+        hudLabel = UILabel()
+        hudLabel?.text = msgText
+        hudLabel?.textColor = UIColor(red: 0.0, green: 0.0, blue: 0.0, alpha: 0.9) // rgba(0, 0, 0, 0.9)
+        hudLabel?.font = UIFont(name: "PingFangSC-Medium", size: 14.0) ?? UIFont.systemFont(ofSize: 14.0, weight: .medium)
+        hudLabel?.textAlignment = .center
+        hudLabel?.numberOfLines = 0
+        hudLabel?.lineBreakMode = .byWordWrapping
+        hudBackgroundView?.addSubview(hudLabel!)
+        
+        // Layout constraints
+        hudContainerView?.translatesAutoresizingMaskIntoConstraints = false
+        hudBackgroundView?.translatesAutoresizingMaskIntoConstraints = false
+        hudLabel?.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Container view constraints (center in parent view)
+        NSLayoutConstraint.activate([
+            hudContainerView!.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            hudContainerView!.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            hudContainerView!.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 40),
+            hudContainerView!.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -40)
+        ])
+        
+        // Background view constraints (hug content)
+        NSLayoutConstraint.activate([
+            hudBackgroundView!.topAnchor.constraint(equalTo: hudContainerView!.topAnchor),
+            hudBackgroundView!.leadingAnchor.constraint(equalTo: hudContainerView!.leadingAnchor),
+            hudBackgroundView!.trailingAnchor.constraint(equalTo: hudContainerView!.trailingAnchor),
+            hudBackgroundView!.bottomAnchor.constraint(equalTo: hudContainerView!.bottomAnchor)
+        ])
+        
+        // Label constraints (8px 20px padding as per design)
+        NSLayoutConstraint.activate([
+            hudLabel!.topAnchor.constraint(equalTo: hudBackgroundView!.topAnchor, constant: 8),
+            hudLabel!.leadingAnchor.constraint(equalTo: hudBackgroundView!.leadingAnchor, constant: 20),
+            hudLabel!.trailingAnchor.constraint(equalTo: hudBackgroundView!.trailingAnchor, constant: -20),
+            hudLabel!.bottomAnchor.constraint(equalTo: hudBackgroundView!.bottomAnchor, constant: -8)
+        ])
+        
+        // Animate in
+        UIView.animate(withDuration: 0.3) {
+            self.hudContainerView?.alpha = 1.0
+        }
+        
+        // Auto hide after 2 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            self.hideHud()
+        }
+    }
+    
+    /// Hide the HUD
+    func hideHud() {
+        guard let hudContainerView = hudContainerView else { return }
+        
+        UIView.animate(withDuration: 0.3, animations: {
+            hudContainerView.alpha = 0.0
+        }) { _ in
+            hudContainerView.removeFromSuperview()
+            self.hudContainerView = nil
+            self.hudBackgroundView = nil
+            self.hudLabel = nil
+        }
     }
 }

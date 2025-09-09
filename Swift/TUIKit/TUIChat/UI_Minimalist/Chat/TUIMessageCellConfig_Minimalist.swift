@@ -62,6 +62,8 @@ extension TUIMessageCellConfig_Minimalist {
         registerCustomMessageCell("TUIChat.TUIOrderCell_Minimalist", messageCellData: "TUIChat.TUIOrderCellData", forBusinessID: "order")
         registerCustomMessageCell("TUIMessageCell_Minimalist", messageCellData: "TUIChat.TUITypingStatusCellData", forBusinessID: "user_typing_status")
         registerCustomMessageCell("TUISystemMessageCell", messageCellData: "TUIChat.TUILocalTipsCellData", forBusinessID: "local_tips")
+        registerCustomMessageCell("TUIChat.TUIChatbotMessageCell_Minimalist", messageCellData: "TUIChat.TUIChatbotMessageCellData", forBusinessID: "chatbotPlugin")
+        registerCustomMessageCell("TUIChat.TUIChatbotMessagePlaceholderCell_Minimalist", messageCellData: "TUIChat.TUIChatbotMessagePlaceholderCellData", forBusinessID: "TUIChatbotMessagePlaceholderCellData")
     }
 
     static func registerExternalCustomMessageInfo() {

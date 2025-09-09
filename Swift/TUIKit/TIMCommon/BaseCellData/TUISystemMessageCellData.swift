@@ -46,9 +46,16 @@ open class TUISystemMessageCellData: TUIMessageCellData {
                     if supportReEdit {
                         let reEditStr = TUISwift.timCommonLocalizableString("TUIKitMessageTipsReEditMessage")
                         attributeString.append(NSAttributedString(string: " \(reEditStr)"))
-                        let reEditAttributes: [NSAttributedString.Key: Any] = [.foregroundColor: UIColor.systemBlue]
-                        attributeString.addAttributes(reEditAttributes, range: NSRange(location: content.count + 1, length: reEditStr.count))
-                        attributeString.addAttribute(.underlineStyle, value: [], range: NSRange(location: content.count + 1, length: reEditStr.count))
+                        
+                        let reEditAttributes: [NSAttributedString.Key: Any] = [
+                            .foregroundColor: UIColor.systemBlue,
+                        ]
+                        let reEditStartLocation = content.count + 1
+                        let reEditRange = NSRange(location: reEditStartLocation, length: reEditStr.count)
+                        
+                        if reEditStartLocation + reEditStr.count <= attributeString.length {
+                            attributeString.addAttributes(reEditAttributes, range: reEditRange)
+                        }
                     }
                     _attributedString = attributeString
                 }

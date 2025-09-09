@@ -11,6 +11,7 @@ protocol TUIInputControllerDelegate: AnyObject {
     func inputControllerDidBeginTyping(_ inputController: TUIInputController)
     func inputControllerDidEndTyping(_ inputController: TUIInputController)
     func inputControllerDidClickMore(_ inputController: TUIInputController)
+    func inputControllerDidTouchAIInterrupt(_ inputController: TUIInputController)
 }
 
 extension TUIInputControllerDelegate {
@@ -22,6 +23,7 @@ extension TUIInputControllerDelegate {
     func inputControllerDidBeginTyping(_ inputController: TUIInputController) {}
     func inputControllerDidEndTyping(_ inputController: TUIInputController) {}
     func inputControllerDidClickMore(_ inputController: TUIInputController) {}
+    func inputControllerDidTouchAIInterrupt(_ inputController: TUIInputController) {}
 }
 
 public class TUIInputController: UIViewController, TUIInputBarDelegate, TUIMenuViewDelegate, TUIFaceViewDelegate, TUIFaceVerticalViewDelegate, TUIMoreViewDelegate {
@@ -32,6 +34,9 @@ public class TUIInputController: UIViewController, TUIInputBarDelegate, TUIMenuV
     var status: InputStatus = .input
     private var keyboardFrame: CGRect = .zero
     private var modifyRootReplyMsgBlock: ((TUIMessageCellData) -> Void)?
+    
+    // MARK: - AI Conversation Properties
+    private var aiStyleEnabled: Bool = false
 
     lazy var menuView: TUIMenuView? = {
         let menuView = TUIMenuView(frame: CGRect(x: 16, y: inputBar!.mm_maxY, width: self.view.frame.size.width - 32, height: CGFloat(TMenuView_Menu_Height)))
@@ -645,5 +650,40 @@ public class TUIInputController: UIViewController, TUIInputBarDelegate, TUIMenuV
 
     func moreView(_ moreView: TUIMoreView, didSelectMoreCell cell: TUIInputMoreCell) {
         delegate?.inputController(self, didSelectMoreCell: cell)
+    }
+    
+    // MARK: - AI Conversation Methods
+    
+    /// Enable or disable AI conversation style
+    public func enableAIStyle(_ enable: Bool) {
+        aiStyleEnabled = enable
+        
+        if enable {
+            inputBar?.setInputBarStyle(.ai)
+            inputBar?.setAIState(.default) // Default state
+        } else {
+            inputBar?.setInputBarStyle(.default)
+        }
+    }
+    
+    /// Set AI state
+    public func setAIState(_ state: TUIInputBarAIState) {
+        if aiStyleEnabled {
+            inputBar?.setAIState(state)
+        }
+    }
+    
+    /// Set AI typing status
+    public func setAITyping(_ typing: Bool) {
+        if aiStyleEnabled {
+            inputBar?.setAITyping(typing)
+        }
+    }
+    
+    // MARK: - TUIInputBarDelegate - AI Methods
+    
+    func inputBarDidTouchAIInterrupt(_ textView: TUIInputBar) {
+        // Handle AI interrupt logic
+        delegate?.inputControllerDidTouchAIInterrupt(self)
     }
 }

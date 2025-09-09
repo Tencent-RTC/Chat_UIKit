@@ -452,8 +452,9 @@ class TUIChatCallingDataProvider: NSObject, TUIChatCallingDataProtocol {
             return nil
         }
 
-        guard let param = try? JSONSerialization.jsonObject(with: data, options: .mutableContainers) as? [String: Any],
-              let businessID = param["businessID"] as? String, businessID == "av_call"
+        guard let param = try? JSONSerialization.jsonObject(with: data, options: [.mutableContainers]) as? [String: Any],
+              let businessID = param["businessID"] as? String,
+              businessID == "av_call" || businessID == "rtc_call"
         else {
             return nil
         }

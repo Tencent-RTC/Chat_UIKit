@@ -274,17 +274,17 @@ class TUIGroupInfoController_Minimalist: UIViewController, TUIModifyViewDelegate
         guard let groupInfo = dataProvider.groupInfo else { return }
         let ac = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
 
-        if groupInfo.isPrivate() || TUIGroupInfoDataProvider_Minimalist.isMeOwner(groupInfo) {
+        if groupInfo.isPrivate() || groupInfo.isMeOwner() {
             ac.addAction(UIAlertAction(title: TUISwift.timCommonLocalizableString("TUIKitGroupProfileEditGroupName"), style: .default) { [weak self] _ in
                 self?.didSelectEditGroupName()
             })
         }
-        if TUIGroupInfoDataProvider_Minimalist.isMeOwner(groupInfo) {
+        if groupInfo.isMeOwner() {
             ac.addAction(UIAlertAction(title: TUISwift.timCommonLocalizableString("TUIKitGroupProfileEditAnnouncement"), style: .default) { [weak self] _ in
                 self?.didSelectEditAnnouncement()
             })
         }
-        if TUIGroupInfoDataProvider_Minimalist.isMeOwner(groupInfo) {
+        if groupInfo.isMeOwner() {
             ac.addAction(UIAlertAction(title: TUISwift.timCommonLocalizableString("TUIKitGroupProfileEditAvatar"), style: .default) { [weak self] _ in
                 self?.didSelectAvatar()
             })

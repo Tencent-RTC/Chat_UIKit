@@ -1,6 +1,7 @@
 import TIMCommon
 import TUICore
 import UIKit
+import SnapKit
 
 private enum TUIRecordStatus: Int {
     case initial
@@ -22,6 +23,7 @@ protocol TUIInputBarDelegate: AnyObject {
     func inputBarDidDeleteBackward(_ textView: TUIInputBar)
     func inputTextViewShouldBeginTyping(_ textView: UITextView)
     func inputTextViewShouldEndTyping(_ textView: UITextView)
+    func inputBarDidTouchAIInterrupt(_ textView: TUIInputBar)
 }
 
 extension TUIInputBarDelegate {
@@ -37,6 +39,7 @@ extension TUIInputBarDelegate {
     func inputBarDidDeleteBackward(_ textView: TUIInputBar) {}
     func inputTextViewShouldBeginTyping(_ textView: UITextView) {}
     func inputTextViewShouldEndTyping(_ textView: UITextView) {}
+    func inputBarDidTouchAIInterrupt(_ textView: TUIInputBar) {}
 }
 
 class TUIInputBar: UIView, UITextViewDelegate, TUIAudioRecorderDelegate, TUIResponderTextViewDelegate {
@@ -64,6 +67,22 @@ class TUIInputBar: UIView, UITextViewDelegate, TUIAudioRecorderDelegate, TUIResp
     var allowSendTypingStatusByChangeWord: Bool = true
     var isFromReplyPage: Bool = false
     weak var delegate: TUIInputBarDelegate?
+    
+    // MARK: - AI Conversation Properties
+    private var aiStyleEnabled: Bool = false
+    var aiIsTyping: Bool = false
+    
+    /// AI chat style
+    public var inputBarStyle: TUIInputBarStyle = .default
+    
+    /// AI chat state
+    public var aiState: TUIInputBarAIState = .default
+    
+    /// AI interrupt button
+    public var aiInterruptButton: UIButton!
+    
+    /// AI send button  
+    public var aiSendButton: UIButton!
 
     lazy var recorder: TUIAudioRecorder = {
         let recorder = TUIAudioRecorder()
@@ -107,10 +126,13 @@ class TUIInputBar: UIView, UITextViewDelegate, TUIAudioRecorderDelegate, TUIResp
         recordTipsLabel = UILabel()
         micButton = UIButton()
         recordButton = UIButton()
+        aiInterruptButton = UIButton(type: .custom)
+        aiSendButton = UIButton(type: .custom)
 
         super.init(frame: frame)
 
         setupViews()
+        setupAIButtons()
         defaultLayout()
 
         NotificationCenter.default.addObserver(self, selector: #selector(onThemeChanged), name: Notification.Name("TUIDidApplyingThemeChangedNotfication"), object: nil)
@@ -197,6 +219,14 @@ class TUIInputBar: UIView, UITextViewDelegate, TUIAudioRecorderDelegate, TUIResp
             make.height.equalTo(TUISwift.tLine_Height())
         }
 
+        if inputBarStyle == .ai {
+            layoutAIStyle()
+        } else {
+            layoutDefaultStyle()
+        }
+    }
+    
+    private func layoutDefaultStyle() {
         let buttonSize = TUISwift.tTextView_Button_Size()
 
         micButton.snp.remakeConstraints { make in
@@ -237,6 +267,10 @@ class TUIInputBar: UIView, UITextViewDelegate, TUIAudioRecorderDelegate, TUIResp
             make.height.equalTo(TUISwift.tTextView_TextView_Height_Min())
             make.centerY.equalToSuperview()
         }
+        
+        // Hide AI buttons
+        aiInterruptButton.isHidden = true
+        aiSendButton.isHidden = true
     }
 
     func layoutButton(height: CGFloat) {
@@ -370,9 +404,11 @@ class TUIInputBar: UIView, UITextViewDelegate, TUIAudioRecorderDelegate, TUIResp
     // MARK: - UITextViewDelegate
 
     func textViewDidBeginEditing(_ textView: UITextView) {
-        keyboardButton.isHidden = true
-        micButton.isHidden = false
-        faceButton.isHidden = false
+        if inputBarStyle == .default {
+            keyboardButton.isHidden = true
+            micButton.isHidden = false
+            faceButton.isHidden = false
+        }
 
         isFocusOn = true
         allowSendTypingStatusByChangeWord = true
@@ -397,6 +433,21 @@ class TUIInputBar: UIView, UITextViewDelegate, TUIAudioRecorderDelegate, TUIResp
             delegate?.inputTextViewShouldBeginTyping(textView)
         }
 
+        // AI style: state switching logic
+        if inputBarStyle == .ai {
+            if aiIsTyping {
+                // When AI is typing, always stay in active state
+                setAIState(.active)
+            } else {
+                // When AI is not typing, decide based on user input state
+                if textView.textStorage.tui_getPlainString().count > 0 {
+                    setAIState(.active)
+                } else {
+                    setAIState(.default)
+                }
+            }
+        }
+        
         if isFocusOn && textView.textStorage.tui_getPlainString().count == 0 {
             delegate?.inputTextViewShouldEndTyping(textView)
         }
@@ -419,8 +470,21 @@ class TUIInputBar: UIView, UITextViewDelegate, TUIAudioRecorderDelegate, TUIResp
 
         UIView.animate(withDuration: 0.3) {
             self.inputTextView.snp.remakeConstraints { make in
-                make.leading.equalTo(self.micButton.snp.trailing).offset(10)
-                make.trailing.equalTo(self.faceButton.snp.leading).offset(-10)
+                if self.inputBarStyle == .ai {
+                    // AI style layout update
+                    if self.aiState == .default {
+                        make.leading.equalTo(self).offset(16)
+                        make.trailing.equalTo(self).offset(-16)
+                    } else {
+                        let rightButton = self.aiIsTyping ? self.aiInterruptButton : self.aiSendButton
+                        make.leading.equalTo(self).offset(16)
+                        make.trailing.equalTo(rightButton!.snp.leading).offset(-12)
+                    }
+                } else {
+                    // Default style layout update
+                    make.leading.equalTo(self.micButton.snp.trailing).offset(10)
+                    make.trailing.equalTo(self.faceButton.snp.leading).offset(-10)
+                }
                 make.height.equalTo(newHeight)
                 make.centerY.equalTo(self)
             }
@@ -676,6 +740,128 @@ class TUIInputBar: UIView, UITextViewDelegate, TUIAudioRecorderDelegate, TUIResp
             }
 
             delegate?.inputBarDidSendVoice(self, path: path)
+        }
+    }
+    
+    // MARK: - AI Conversation Methods
+    
+    /// Enable or disable AI conversation style
+    func enableAIStyle(_ enable: Bool) {
+        aiStyleEnabled = enable
+    }
+    
+    /// Set input bar style
+    func setInputBarStyle(_ style: TUIInputBarStyle) {
+        inputBarStyle = style
+        defaultLayout()
+    }
+    
+    /// Set AI state
+    func setAIState(_ state: TUIInputBarAIState) {
+        aiState = state
+        if inputBarStyle == .ai {
+            layoutAIStyle()
+        }
+    }
+    
+    /// Set AI typing state with auto state management
+    func setAITyping(_ typing: Bool) {
+        print("setAITyping: \(typing)")
+        aiIsTyping = typing
+        if typing {
+            setAIState(.active)
+        }
+        if inputBarStyle == .ai && aiState == .active {
+            layoutAIStyle()
+        }
+    }
+    
+    // MARK: - AI Setup Methods
+    
+    private func setupAIButtons() {
+        // Setup AI interrupt button
+        aiInterruptButton.setBackgroundImage(TUISwift.tuiChatBundleThemeImage("chat_ai_interrupt_icon_img",defaultImage: "chat_ai_interrupt_icon"), for: .normal)
+        aiInterruptButton.titleLabel?.font = UIFont.systemFont(ofSize: 14)
+        aiInterruptButton.layer.cornerRadius = 16
+        aiInterruptButton.layer.masksToBounds = true
+        aiInterruptButton.addTarget(self, action: #selector(onAIInterruptButtonClicked), for: .touchUpInside)
+        aiInterruptButton.isHidden = true
+        addSubview(aiInterruptButton)
+        
+        // Setup AI send button
+        aiSendButton.setTitle(TUISwift.timCommonLocalizableString("Send"), for: .normal)
+        aiSendButton.setTitleColor(.white, for: .normal)
+        aiSendButton.titleLabel?.font = UIFont.systemFont(ofSize: 14)
+        aiSendButton.backgroundColor = TUISwift.tuiChatDynamicColor("", defaultColor: "#0ABF77")
+        aiSendButton.layer.cornerRadius = 3
+        aiSendButton.layer.masksToBounds = true
+        aiSendButton.addTarget(self, action: #selector(onAISendButtonClicked), for: .touchUpInside)
+        aiSendButton.isHidden = true
+        addSubview(aiSendButton)
+    }
+    
+    private func layoutAIStyle() {
+        // Hide default buttons
+        micButton.isHidden = true
+        faceButton.isHidden = true
+        moreButton.isHidden = true
+        recordButton.isHidden = true
+        keyboardButton.isHidden = true
+        
+        if aiState == .default {
+            // AI default state: large input box only
+            inputTextView.snp.remakeConstraints { make in
+                make.leading.equalTo(self).offset(16)
+                make.trailing.equalTo(self).offset(-16)
+                make.height.equalTo(TUISwift.tTextView_TextView_Height_Min())
+                make.centerY.equalTo(self)
+            }
+            
+            aiInterruptButton.isHidden = true
+            aiSendButton.isHidden = true
+        } else {
+            // AI active state: input box on left, button on right
+            let rightButton = aiIsTyping ? aiInterruptButton : aiSendButton
+            let hiddenButton = aiIsTyping ? aiSendButton : aiInterruptButton
+            
+            inputTextView.snp.remakeConstraints { make in
+                make.leading.equalTo(self).offset(16)
+                make.trailing.equalTo(rightButton!.snp.leading).offset(-12)
+                make.height.equalTo(TUISwift.tTextView_TextView_Height_Min())
+                make.centerY.equalTo(self)
+            }
+            
+            rightButton?.snp.remakeConstraints { make in
+                make.trailing.equalTo(self).offset(-16)
+                make.centerY.equalTo(self)
+                make.width.equalTo(aiIsTyping ? 32 : 60);
+                make.height.equalTo(aiIsTyping ? 32 : 32);
+
+            }
+            
+            rightButton?.isHidden = false
+            hiddenButton?.isHidden = true
+        }
+    }
+
+    
+    // MARK: - AI Button Actions
+    
+    @objc private func onAIInterruptButtonClicked() {
+        delegate?.inputBarDidTouchAIInterrupt(self)
+    }
+    
+    @objc private func onAISendButtonClicked() {
+        // Handle AI send logic
+        if !TUILogin.isUserLogined() {
+             inputTextView.resignFirstResponder()
+            TUITool.makeToast(TUISwift.timCommonLocalizableString("TUIKitUserStatusUnlogined"))
+            return
+        }
+        let text = inputTextView.textStorage.tui_getPlainString()
+        if text.count > 0 {
+            delegate?.inputBarDidSendText(self, text: text)
+            clearInput()
         }
     }
 }

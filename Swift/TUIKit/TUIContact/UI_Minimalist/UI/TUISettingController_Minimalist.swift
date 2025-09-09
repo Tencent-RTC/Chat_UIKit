@@ -214,7 +214,7 @@ public class TUISettingController_Minimalist: UITableViewController, UIActionShe
             let personal = TUIContactProfileCardCellData_Minimalist()
             personal.identifier = profile?.userID ?? ""
             personal.avatarImage = TUISwift.defaultAvatarImage()
-            personal.avatarUrl = URL(string: profile?.faceURL ?? "")!
+            personal.avatarUrl = URL(string: profile?.faceURL ?? "")
             personal.name = profile?.showName() ?? ""
             personal.genderString = profile?.showGender() ?? ""
             personal.signature = profile?.selfSignature != nil ? String(format: TUISwift.timCommonLocalizableString("SignatureFormat"), profile?.selfSignature ?? "") : TUISwift.timCommonLocalizableString("no_personal_signature")

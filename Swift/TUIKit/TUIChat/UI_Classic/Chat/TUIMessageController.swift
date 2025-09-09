@@ -282,6 +282,7 @@ class TUIMessageController: TUIBaseMessageController, TUIChatSmallTongueViewDele
 
             if isFirstLoad {
                 self.scrollToBottom(false)
+                self.restoreAITypingMessageIfNeeded()
             } else {
                 if order {
                     let index = newUIMsgs.count > 0 ? newUIMsgs.count - 1 : 0

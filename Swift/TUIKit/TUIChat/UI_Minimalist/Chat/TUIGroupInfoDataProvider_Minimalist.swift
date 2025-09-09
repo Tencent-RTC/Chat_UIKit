@@ -56,28 +56,40 @@ class TUIGroupInfoDataProvider_Minimalist: NSObject, V2TIMGroupListener {
         loadData()
     }
 
+    func onGrantAdministrator(groupID: String?, opUser: V2TIMGroupMemberInfo!, memberList: [V2TIMGroupMemberInfo]!) {
+        loadData()
+    }
+    
+    func onRevokeAdministrator(groupID: String?, opUser: V2TIMGroupMemberInfo!, memberList: [V2TIMGroupMemberInfo]!) {
+        loadData()
+    }
+    
     func onGroupInfoChanged(groupID: String?, changeInfoList: [V2TIMGroupChangeInfo]) {
         guard groupID == self.groupID else { return }
         loadData()
     }
     
     func loadData() {
+        guard !groupID.isEmpty else {
+            TUITool.makeToastError(Int(ERR_INVALID_PARAMETERS.rawValue), msg: "invalid groupID")
+            return
+        }
         firstLoadData = true
         let group = DispatchGroup()
         
         group.enter()
-        getGroupInfo { [weak group] in
-            group?.leave()
+        getGroupInfo {
+            group.leave()
         }
         
         group.enter()
-        getGroupMembers { [weak group] in
-            group?.leave()
+        getGroupMembers {
+            group.leave()
         }
         
         group.enter()
-        getSelfInfoInGroup { [weak group] in
-            group?.leave()
+        getSelfInfoInGroup {
+            group.leave()
         }
         
         group.notify(queue: .main) { [weak self] in
@@ -86,15 +98,31 @@ class TUIGroupInfoDataProvider_Minimalist: NSObject, V2TIMGroupListener {
     }
 
     func updateGroupInfo(_ callback: (() -> Void)?) {
-        V2TIMManager.sharedInstance().getGroupsInfo([groupID]) { [weak self] groupResultList in
-            guard let self = self,
-                  let groupResultList = groupResultList, groupResultList.count == 1 else { return }
-            self.groupInfo = groupResultList[0].info
-            self.setupData()
+        guard !groupID.isEmpty else {
+            TUITool.makeToastError(Int(ERR_INVALID_PARAMETERS.rawValue), msg: "invalid groupID")
+            return
+        }
+        
+        let group = DispatchGroup()
+        
+        group.enter()
+        getGroupInfo {
+            group.leave()
+        }
+        
+        group.enter()
+        getGroupMembers {
+            group.leave()
+        }
+        
+        group.enter()
+        getSelfInfoInGroup {
+            group.leave()
+        }
+        
+        group.notify(queue: .main) { [weak self] in
+            self?.setupData()
             callback?()
-        } fail: { [weak self] code, msg in
-            guard let self else { return }
-            self.makeToastError(Int(code), msg: msg ?? "")
         }
     }
 
@@ -187,9 +215,9 @@ class TUIGroupInfoDataProvider_Minimalist: NSObject, V2TIMGroupListener {
         data.name = TUISwift.timCommonLocalizableString("YOU")
         data.showAccessory = false
         guard let groupInfo = groupInfo else { return data }
-        if TUIGroupInfoDataProvider_Minimalist.isMeSuper(groupInfo) {
+        if isSuperAdmin() {
             data.detailName = TUISwift.timCommonLocalizableString("TUIKitMembersRoleSuper")
-        } else if TUIGroupInfoDataProvider_Minimalist.isMeOwner(groupInfo) {
+        } else if canManager() {
             data.detailName = TUISwift.timCommonLocalizableString("TUIKitMembersRoleAdmin")
         } else {
             data.detailName = TUISwift.timCommonLocalizableString("TUIKitMembersRoleMember")
@@ -271,7 +299,7 @@ class TUIGroupInfoDataProvider_Minimalist: NSObject, V2TIMGroupListener {
                     manageData.showAccessory = true
                     manageData.cselector = #selector(groupProfileExtensionButtonClick(_:))
                     if info.weight == 100 {
-                        if Self.isMeOwner(groupInfo) {
+                        if canManager() {
                             groupInfoArray.append(manageData)
                         }
                     } else {
@@ -290,7 +318,7 @@ class TUIGroupInfoDataProvider_Minimalist: NSObject, V2TIMGroupListener {
             let joinData = TUICommonTextCellData()
             joinData.key = TUISwift.timCommonLocalizableString("TUIKitGroupProfileJoinType")
 
-            if Self.isMeOwner(groupInfo) {
+            if canManager() {
                 joinData.cselector = #selector(didSelectAddOption(_:))
                 joinData.showAccessory = true
             }
@@ -302,7 +330,7 @@ class TUIGroupInfoDataProvider_Minimalist: NSObject, V2TIMGroupListener {
             // Group Inviting Method
             let inviteOptionData = TUICommonTextCellData()
             inviteOptionData.key = TUISwift.timCommonLocalizableString("TUIKitGroupProfileInviteType")
-            if Self.isMeOwner(groupInfo) {
+            if canManager() {
                 inviteOptionData.cselector = #selector(didSelectAddOption(_:))
                 inviteOptionData.showAccessory = true
             }
@@ -385,7 +413,7 @@ class TUIGroupInfoDataProvider_Minimalist: NSObject, V2TIMGroupListener {
             buttonArray.append(quitButton)
         }
 
-        if Self.isMeSuper(groupInfo) && !TUIGroupConfig.shared.isItemHiddenInGroupConfig(.transfer) {
+        if isSuperAdmin() && !TUIGroupConfig.shared.isItemHiddenInGroupConfig(.transfer) {
             // Transfer Group
             var param: [String: Any] = [
                 "pushVC": delegate?.pushNavigationController() as Any,
@@ -508,7 +536,7 @@ class TUIGroupInfoDataProvider_Minimalist: NSObject, V2TIMGroupListener {
             add.tag = 1
             tmpArray.append(add)
         }
-        if groupInfo?.canRemoveMember() == true {
+        if canRemoveMember() {
             let delete = TUIGroupMemberCellData_Minimalist()
             delete.avatarImage = TUISwift.tuiContactCommonBundleImage("delete")
             delete.tag = 2
@@ -606,6 +634,18 @@ class TUIGroupInfoDataProvider_Minimalist: NSObject, V2TIMGroupListener {
     func clearAllHistory(succ: @escaping V2TIMSucc, fail: @escaping V2TIMFail) {
         V2TIMManager.sharedInstance().clearGroupHistoryMessage(groupID: groupID, succ: succ, fail: fail)
     }
+    
+    private func canRemoveMember() -> Bool {
+        return selfInfo != nil && TUIGroupInfoDataProvider_Minimalist.isMeOwnerByGroupMemberInfo(selfInfo!)
+    }
+    
+    private func canManager() -> Bool {
+        return selfInfo != nil && TUIGroupInfoDataProvider_Minimalist.isMeOwnerByGroupMemberInfo(selfInfo!)
+    }
+    
+    private func isSuperAdmin() -> Bool {
+        return selfInfo != nil && TUIGroupInfoDataProvider_Minimalist.isMeSuperByGroupMemberInfo(selfInfo!)
+    }
 
     // MARK: - Static Methods
 
@@ -671,11 +711,12 @@ class TUIGroupInfoDataProvider_Minimalist: NSObject, V2TIMGroupListener {
         return markList.contains { $0.intValue == V2TIMConversationMarkType.CONVERSATION_MARK_TYPE_HIDE.rawValue }
     }
 
-    static func isMeOwner(_ groupInfo: V2TIMGroupInfo) -> Bool {
-        return groupInfo.owner == V2TIMManager.sharedInstance().getLoginUser() || groupInfo.role == V2TIMGroupMemberRole.GROUP_MEMBER_ROLE_ADMIN.rawValue
+    
+    static func isMeOwnerByGroupMemberInfo(_ groupMemberFullInfo: V2TIMGroupMemberFullInfo) -> Bool {
+        return groupMemberFullInfo.role == V2TIMGroupMemberRole.GROUP_MEMBER_ROLE_ADMIN.rawValue || groupMemberFullInfo.role == V2TIMGroupMemberRole.GROUP_MEMBER_ROLE_SUPER.rawValue
     }
-
-    static func isMeSuper(_ groupInfo: V2TIMGroupInfo) -> Bool {
-        return groupInfo.owner == V2TIMManager.sharedInstance().getLoginUser() && groupInfo.role == V2TIMGroupMemberRole.GROUP_MEMBER_ROLE_SUPER.rawValue
+    
+    static func isMeSuperByGroupMemberInfo(_ groupMemberFullInfo: V2TIMGroupMemberFullInfo) -> Bool {
+        return groupMemberFullInfo.role == V2TIMGroupMemberRole.GROUP_MEMBER_ROLE_SUPER.rawValue
     }
 }

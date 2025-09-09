@@ -203,8 +203,11 @@ public class TUISettingController: UITableViewController, UIActionSheetDelegate,
             let personal = TUIProfileCardCellData()
             personal.identifier = self.profile?.userID ?? ""
             personal.avatarImage = TUISwift.defaultAvatarImage()
-            if let url = self.profile?.faceURL {
-                personal.avatarUrl = URL(string: url) ?? URL(string: "")!
+            if let url = self.profile?.faceURL,
+               let validURL = URL(string: url) {
+                personal.avatarUrl = validURL
+            } else {
+                personal.avatarUrl = nil
             }
             personal.name = self.profile?.showName() ?? ""
             personal.genderString = self.profile?.showGender() ?? ""

@@ -96,7 +96,7 @@ class TUIMessageSearchDataProvider: TUIMessageDataProvider {
             results.append(contentsOf: olders)
             if let searchMsg = searchMsg {
                 results.append(searchMsg)
-            } else {
+            } else if !results.isEmpty {
                 results.removeLast()
             }
             results.append(contentsOf: newers)

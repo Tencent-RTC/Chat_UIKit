@@ -209,8 +209,16 @@ public class TUIFriendProfileController: UITableViewController, TUIContactProfil
             if let userID = friendProfile?.userID, !userID.isEmpty {
                 extensionParam["TUICore_TUIContactExtension_FriendProfileActionMenu_UserID"] = userID
             }
-            extensionParam["TUICore_TUIContactExtension_FriendProfileActionMenu_FilterVideoCall"] = false
-            extensionParam["TUICore_TUIContactExtension_FriendProfileActionMenu_FilterAudioCall"] = false
+            // Check if this is an AI conversation
+            let isAIConversation = (friendProfile?.userID ?? "").contains("@RBT#")
+            
+            if isAIConversation {
+                extensionParam["TUICore_TUIContactExtension_FriendProfileActionMenu_FilterVideoCall"] = true
+                extensionParam["TUICore_TUIContactExtension_FriendProfileActionMenu_FilterAudioCall"] = true
+            } else {
+                extensionParam["TUICore_TUIContactExtension_FriendProfileActionMenu_FilterVideoCall"] = false
+                extensionParam["TUICore_TUIContactExtension_FriendProfileActionMenu_FilterAudioCall"] = false
+            }
             let extensionList = TUICore.getExtensionList("TUICore_TUIContactExtension_FriendProfileActionMenu_ClassicExtensionID", param: extensionParam)
             for info in extensionList {
                 if let text = info.text {

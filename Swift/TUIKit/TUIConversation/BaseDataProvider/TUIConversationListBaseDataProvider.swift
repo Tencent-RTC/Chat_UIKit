@@ -263,9 +263,22 @@ open class TUIConversationListBaseDataProvider: NSObject, V2TIMConversationListe
             handleInsertConversationList(addedDataList)
         }
 
+        // Check if only AI conversation exists
+        var onlyAIConversation = false
+        if duplicateDataList.count == 1 {
+            if let firstCellData = duplicateDataList.first,
+               let conversationID = firstCellData.conversationID,
+               conversationID.contains("@RBT#") {
+                onlyAIConversation = true
+            }
+        }
+
         updateMardHide(&markHideDataList)
 
-        updateMarkUnreadCount()
+        // Skip updateMarkUnreadCount for AI-only conversations
+        if !onlyAIConversation {
+            updateMarkUnreadCount()
+        }
 
         updateMarkFold(&markFoldDataList)
 

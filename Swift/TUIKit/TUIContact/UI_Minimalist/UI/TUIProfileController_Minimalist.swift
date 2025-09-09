@@ -193,7 +193,13 @@ class TUIProfileController_Minimalist: UITableViewController, UIActionSheetDeleg
         data = []
 
         if let profile = profile {
-            headerView?.headImg.sd_setImage(with: URL(string: profile.faceURL ?? ""), placeholderImage: TUISwift.defaultAvatarImage())
+            if let faceURLString = profile.faceURL,
+               !faceURLString.isEmpty,
+               let url = URL(string: faceURLString) {
+                headerView?.headImg.sd_setImage(with: url, placeholderImage: TUISwift.defaultAvatarImage())
+            } else {
+                headerView?.headImg.sd_setImage(with: nil, placeholderImage: TUISwift.defaultAvatarImage())
+            }
             headerView?.descriptionLabel.text = profile.showName()
 
             headerView?.headImgClickBlock = { [weak self] in
@@ -206,7 +212,7 @@ class TUIProfileController_Minimalist: UITableViewController, UIActionSheetDeleg
 
             let IDData = TUICommonTextCellData()
             IDData.key = TUISwift.timCommonLocalizableString("ProfileAccount")
-            IDData.value = "\(profile.userID ?? "")      "
+            IDData.value = profile.userID ?? ""
             IDData.showAccessory = false
             data.append([IDData])
 

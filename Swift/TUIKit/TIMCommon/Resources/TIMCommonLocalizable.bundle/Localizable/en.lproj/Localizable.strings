@@ -549,6 +549,8 @@
 "TUIKitSearchNoResultLists" = "No conversations, contacts, or messages found";
 
 "TUIKitTyping" = "Typing";
+"TUIKitAITyping" = "Outputting answers\nPlease wait or click to stop answering";
+
 
 "TUIKitMessageTipsEditGroupAddOptFormat" = "%@ changed group add option to \"%@\"、";
 "TUIKitMessageTipsEditGroupInviteOptFormat" = "%@ changed group inviting option to \"%@\"、";

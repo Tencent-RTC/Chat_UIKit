@@ -66,6 +66,8 @@ extension TUIMessageCellConfig {
         registerCustomMessageCell("TUIChat.TUIOrderCell", messageCellData: "TUIChat.TUIOrderCellData", forBusinessID: "order")
         registerCustomMessageCell("TUIMessageCell", messageCellData: "TUIChat.TUITypingStatusCellData", forBusinessID: "user_typing_status")
         registerCustomMessageCell("TUISystemMessageCell", messageCellData: "TUIChat.TUILocalTipsCellData", forBusinessID: "local_tips")
+        registerCustomMessageCell("TUIChat.TUIChatbotMessageCell", messageCellData: "TUIChat.TUIChatbotMessageCellData", forBusinessID: "chatbotPlugin")
+        registerCustomMessageCell("TUIChat.TUIChatbotMessagePlaceholderCell", messageCellData: "TUIChat.TUIChatbotMessagePlaceholderCellData", forBusinessID: "TUIChatbotMessagePlaceholderCellData")
     }
 
     static func registerExternalCustomMessageInfo() {

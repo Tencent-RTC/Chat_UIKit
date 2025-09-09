@@ -21,6 +21,9 @@ public class TUIBaseMessageController_Minimalist: UITableViewController, TUIMess
     var isAutoScrolledToBottom: Bool = false
     var hasCoverPage: Bool = false
     var popAlertController: TUIChatPopContextController?
+    
+    // MARK: - AI Streaming Callback
+    var steamCellFinishedBlock: ((Bool, TUIMessageCellData) -> Void)?
 
     lazy var messageCellConfig: TUIMessageCellConfig_Minimalist = {
         let config = TUIMessageCellConfig_Minimalist()
@@ -119,6 +122,7 @@ public class TUIBaseMessageController_Minimalist: UITableViewController, TUIMess
     }
 
     func registerEvents() {
+        TUICore.registerEvent("TUICore_TUIPluginNotify", subKey: "TUICore_TUIPluginNotify_PluginViewSizeChangedSubKey", object: self)
         TUICore.registerEvent("TUICore_TUIPluginNotify", subKey: "TUICore_TUIPluginNotify_WillForwardTextSubKey", object: self)
         TUICore.registerEvent("TUICore_TUIPluginNotify", subKey: "TUICore_TUIPluginNotify_DidChangePluginViewSubKey", object: self)
         NotificationCenter.default.addObserver(self, selector: #selector(applicationBecomeActive), name: UIApplication.didBecomeActiveNotification, object: nil)
@@ -461,7 +465,22 @@ public class TUIBaseMessageController_Minimalist: UITableViewController, TUIMess
 
     public func onNotifyEvent(_ key: String, subKey: String, object anObject: Any?, param: [AnyHashable: Any]?) {
         guard let messageDataProvider = messageDataProvider else { return }
-        if key == "TUICore_TUIPluginNotify" && subKey == "TUICore_TUIPluginNotify_DidChangePluginViewSubKey" {
+        if key == "TUICore_TUIPluginNotify" && subKey == "TUICore_TUIPluginNotify_PluginViewSizeChangedSubKey" {
+            guard let message = param?["TUICore_TUIPluginNotify_PluginViewSizeChangedSubKey_Message"] as? V2TIMMessage else { return }
+            for data in messageDataProvider.uiMsgs {
+                if let msg = data.innerMessage, msg.msgID == message.msgID {
+                    messageCellConfig.removeHeightCacheOfMessageCellData(data)
+                    reloadAndScrollToBottomOfMessage(data.innerMessage?.msgID ?? "")
+                    if let indexPath = indexPathOfMessage(data.innerMessage?.msgID ?? "") {
+                        tableView.beginUpdates()
+                        _ = tableView(tableView, heightForRowAt: indexPath)
+                        tableView.endUpdates()
+                    }
+                    break
+                }
+            }
+        }
+        else if key == "TUICore_TUIPluginNotify" && subKey == "TUICore_TUIPluginNotify_DidChangePluginViewSubKey" {
             guard let data = param?["TUICore_TUIPluginNotify_DidChangePluginViewSubKey_Data"] as? TUIMessageCellData else { return }
             var isAllowScroll2Bottom = true
             if let allowScroll2Bottom = param?["TUICore_TUIPluginNotify_DidChangePluginViewSubKey_isAllowScroll2Bottom"] as? String, allowScroll2Bottom == "0" {
@@ -472,6 +491,18 @@ public class TUIBaseMessageController_Minimalist: UITableViewController, TUIMess
                     isAllowScroll2Bottom = true
                 }
             }
+            
+            // Handle AI streaming callback - only for chatbot cells
+            if let steamCellFinishedBlock = steamCellFinishedBlock {
+                if let isFinished = param?["isFinished"] as? String {
+                    if isFinished == "1" {
+                        steamCellFinishedBlock(true, data)
+                    } else {
+                        steamCellFinishedBlock(false, data)
+                    }
+                }
+            }
+            
             messageCellConfig.removeHeightCacheOfMessageCellData(data)
             if let msgID = data.innerMessage?.msgID {
                 reloadAndScrollToBottomOfMessage(msgID, needScroll: isAllowScroll2Bottom)
@@ -1115,8 +1146,16 @@ public class TUIBaseMessageController_Minimalist: UITableViewController, TUIMess
         if let data = cell.messageData,
            let result = TUIChatConfig.shared.eventConfig.chatEventListener?.onMessageLongClicked(cell, messageCellData: data), result == true { return }
 
+
         guard !(cell.messageData is TUISystemMessageCellData) else { return }
         menuUIMsg = cell.messageData
+        
+        // Handle AI conversation long press
+        if let conversationData = conversationData, conversationData.isAIConversation() {
+            handleAIConversationLongPress(cell)
+            return
+        }
+        
         showContextWindow(cell)
     }
 
@@ -1146,7 +1185,15 @@ public class TUIBaseMessageController_Minimalist: UITableViewController, TUIMess
         delegate?.onSelectMessageAvatar(self, cell: cell)
     }
 
-    public func onSelectReadReceipt(_ cell: TUIMessageCellData) {}
+    public func onSelectReadReceipt(_ cell: TUIMessageCellData) {
+        // AI conversations don't support read receipts
+        if let conversationData = conversationData, conversationData.isAIConversation() {
+            return
+        }
+        
+        // Minimalist version currently doesn't implement read receipt detail view
+        // This method is kept for consistency with Classic version
+    }
 
     public func onJumpToRepliesDetailPage(_ data: TUIMessageCellData) {
         guard let msg = data.innerMessage,
@@ -1629,4 +1676,120 @@ public class TUIBaseMessageController_Minimalist: UITableViewController, TUIMess
             }
         })
     }
+    
+    // MARK: - AI Typing Message Management
+    
+    func createAITypingMessage() {
+        // Check and remove any existing AI placeholder typing message first
+        if let conversationID = conversationData?.conversationID {
+            if let currentAITypingMessage = TUIAIPlaceholderTypingMessageManager.shared.getAIPlaceholderTypingMessage(forConversation: conversationID) {
+                // Find the index of the existing AI typing message
+                if let aiTypingIndex = messageDataProvider?.uiMsgs.firstIndex(of: currentAITypingMessage) {
+                    // Remove the existing AI typing placeholder message
+                    messageDataProvider?.dataSource?.dataProviderDataSourceWillChange(messageDataProvider!)
+                    messageDataProvider?.removeUIMsg(currentAITypingMessage)
+                    messageDataProvider?.dataSource?.dataProviderDataSourceChange(messageDataProvider!, withType: .delete, atIndex: UInt(aiTypingIndex), animation: true)
+                    messageDataProvider?.dataSource?.dataProviderDataSourceDidChange(messageDataProvider!)
+                }
+                
+                // Remove from manager
+                TUIAIPlaceholderTypingMessageManager.shared.removeAIPlaceholderTypingMessage(forConversation: conversationID)
+            }
+        }
+        
+        // Create AI typing placeholder message using TUIChatbotMessagePlaceholderCellData
+        let aiTypingData = TUIChatbotMessagePlaceholderCellData.createAIPlaceholderCellData()
+        
+        // Send as placeholder message
+        sendPlaceHolderUIMessage(aiTypingData)
+        
+        // Store reference in global manager for later replacement
+        if let conversationID = conversationData?.conversationID {
+            TUIAIPlaceholderTypingMessageManager.shared.setAIPlaceholderTypingMessage(aiTypingData, forConversation: conversationID)
+        }
+        
+        // Note: AI typing message will be automatically removed when real AI response is received
+        // via onRecvNewMessage in TUIMessageBaseDataProvider
+    }
+    
+    func restoreAITypingMessageIfNeeded() {
+        guard let lastObj = messageDataProvider?.uiMsgs.last,
+              let conversationID = conversationData?.conversationID else { return }
+        
+        if TUIAIPlaceholderTypingMessageManager.shared.hasAIPlaceholderTypingMessage(forConversation: conversationID) {
+            if let existingAIPlaceHolderMessage = TUIAIPlaceholderTypingMessageManager.shared.getAIPlaceholderTypingMessage(forConversation: conversationID) {
+                let lastObjisTUIChatbotMessageCellData = lastObj is TUIChatbotMessageCellData
+                let isSuccess = lastObj.status != .fail
+                
+                if !lastObjisTUIChatbotMessageCellData && isSuccess {
+                    // Add the existing AI typing message to current message list
+                    sendPlaceHolderUIMessage(existingAIPlaceHolderMessage)
+                } else {
+                    TUIAIPlaceholderTypingMessageManager.shared.removeAIPlaceholderTypingMessage(forConversation: conversationID)
+                }
+            }
+        }
+    }
+    
+    /// Handle AI conversation long press - only show copy, forward, delete options for AI conversations
+    private func handleAIConversationLongPress(_ cell: TUIMessageCell) {
+        
+        guard let data = cell.messageData else { return }
+        
+        let frame = TUITool.applicationKeywindow()?.convert(cell.container.frame, from: cell) ?? .zero
+        let alertController = TUIChatPopContextController()
+        alertController.alertViewCellData = cell.messageData
+        alertController.originFrame = frame
+        alertController.alertCellClass = type(of: cell)
+        alertController.isConfigRecentView = false
+        
+        // blur effect
+        if let navView = navigationController?.view {
+            alertController.setBlurEffect(with: navView)
+        }
+        
+        // config AI-specific items (copy, forward, delete only)
+        configAIItems(alertController, targetCell: cell)
+        
+        alertController.viewWillShowHandler = { [weak self] alertView in
+            alertView.delegate = self
+        }
+        
+        alertController.dismissComplete = { [weak cell] in
+            cell?.container.isHidden = false
+        }
+        
+        navigationController?.present(alertController, animated: false, completion: nil)
+        popAlertController = alertController
+    }
+    
+    /// Configure AI-specific menu items (copy, forward, delete only)
+    private func configAIItems(_ alertController: TUIChatPopContextController, targetCell cell: TUIMessageCell) {
+        var items = [TUIChatPopContextExtensionItem]()
+        
+        guard let imMsg = cell.messageData?.innerMessage else { return }
+        
+        // Add copy action if applicable
+        if let data = cell.messageData, isAddCopy(imMsg, data: data) {
+            items.append(setupCopyAction(for: alertController, targetCell: cell))
+        }
+        
+        // Add forward action if applicable
+        if isAddForward(imMsg) {
+            items.append(setupForwardAction(for: alertController, targetCell: cell))
+        }
+        
+        // Add delete action if applicable
+        if isAddDelete() {
+            items.append(setupDeleteAction(for: alertController, targetCell: cell))
+        }
+        
+        var sortedArray = sortItems(&items)
+        let allPageItemsArray = pageItems(&sortedArray, inAlertController: alertController)
+        
+        if !allPageItemsArray.isEmpty {
+            alertController.items = allPageItemsArray[0]
+        }
+    }
+
 }

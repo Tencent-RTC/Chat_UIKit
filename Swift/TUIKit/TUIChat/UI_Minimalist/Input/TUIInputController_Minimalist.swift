@@ -11,6 +11,7 @@ protocol TUIInputControllerDelegate_Minimalist: NSObjectProtocol {
     func inputController(_ inputController: TUIInputController_Minimalist, didDeleteAt atText: String)
     func inputControllerDidBeginTyping(_ inputController: TUIInputController_Minimalist)
     func inputControllerDidEndTyping(_ inputController: TUIInputController_Minimalist)
+    func inputControllerDidTouchAIInterrupt(_ inputController: TUIInputController_Minimalist)
 }
 
 extension TUIInputControllerDelegate_Minimalist {
@@ -22,6 +23,7 @@ extension TUIInputControllerDelegate_Minimalist {
     func inputController(_ inputController: TUIInputController_Minimalist, didDeleteAt atText: String) {}
     func inputControllerDidBeginTyping(_ inputController: TUIInputController_Minimalist) {}
     func inputControllerDidEndTyping(_ inputController: TUIInputController_Minimalist) {}
+    func inputControllerDidTouchAIInterrupt(_ inputController: TUIInputController_Minimalist) {}
 }
 
 public class TUIInputController_Minimalist: UIViewController, TUIInputBarDelegate_Minimalist, TUIMenuViewDelegate_Minimalist, TUIFaceVerticalViewDelegate {
@@ -32,6 +34,9 @@ public class TUIInputController_Minimalist: UIViewController, TUIInputBarDelegat
     var status: InputStatus = .input
     private var keyboardFrame: CGRect = .zero
     private var modifyRootReplyMsgBlock: ((TUIMessageCellData) -> Void)?
+    
+    // MARK: - AI Conversation Properties
+    private var aiStyleEnabled: Bool = false
 
     lazy var menuView: TUIMenuView_Minimalist? = {
         let menuView = TUIMenuView_Minimalist(frame: CGRect(x: 16, y: inputBar!.mm_maxY, width: self.view.frame.size.width - 32, height: CGFloat(TMenuView_Menu_Height)))
@@ -557,5 +562,40 @@ public class TUIInputController_Minimalist: UIViewController, TUIInputBarDelegat
 
     func faceViewDidBackDelete(_ faceView: TUIFaceView) {
         inputBar?.backDelete()
+    }
+    
+    // MARK: - AI Conversation Methods
+    
+    /// Enable or disable AI conversation style
+    public func enableAIStyle(_ enable: Bool) {
+        aiStyleEnabled = enable
+        
+        if enable {
+            inputBar?.setInputBarStyle(.ai)
+            inputBar?.setAIState(.default) // Default state
+        } else {
+            inputBar?.setInputBarStyle(.default)
+        }
+    }
+    
+    /// Set AI state
+    public func setAIState(_ state: TUIInputBarAIState_Minimalist) {
+        if aiStyleEnabled {
+            inputBar?.setAIState(state)
+        }
+    }
+    
+    /// Set AI typing status
+    public func setAITyping(_ typing: Bool) {
+        if aiStyleEnabled {
+            inputBar?.setAITyping(typing)
+        }
+    }
+    
+    // MARK: - TUIInputBarDelegate_Minimalist - AI Methods
+    
+    func inputBarDidTouchAIInterrupt(_ textView: TUIInputBar_Minimalist) {
+        // Handle AI interrupt logic
+        delegate?.inputControllerDidTouchAIInterrupt(self)
     }
 }
