@@ -61,6 +61,21 @@ public class TUIReplyMessageCell_Minimalist: TUIBubbleMessageCell_Minimalist, UI
 
         bottomContainer = UIView()
         contentView.addSubview(bottomContainer)
+
+        topContainer = UIView()
+        topContainer.isUserInteractionEnabled = true
+        contentView.addSubview(topContainer)
+    }
+
+    override public func notifyTopContainerReady(of cellData: TUIMessageCellData?) {
+        guard let replyData = replyData else { return }
+        let param: [String: Any] = ["TUICore_TUIChatExtension_TopContainer_CellData": replyData]
+        let hasExtension = TUICore.raiseExtension("TUICore_TUIChatExtension_TopContainer_MinimalistExtensionID", parentView: topContainer, param: param)
+        topContainer.isHidden = !hasExtension
+
+        if hasExtension {
+            layoutTopContainer()
+        }
     }
 
     override public func notifyBottomContainerReady(of cellData: TUIMessageCellData?) {
@@ -115,6 +130,25 @@ public class TUIReplyMessageCell_Minimalist: TUIBubbleMessageCell_Minimalist, UI
         super.updateConstraints()
         updateUI(replyData)
         layoutBottomContainer()
+        layoutTopContainer()
+    }
+
+    private func layoutTopContainer() {
+        guard !topContainer.isHidden else { return }
+        guard let replyData = replyData else { return }
+
+        let topContainerSize = replyData.topContainerSize
+        guard topContainerSize.width > 0 && topContainerSize.height > 0 else {
+            topContainer.isHidden = true
+            return
+        }
+
+        // Position topContainer at top-right corner of bubbleView
+        topContainer.snp.remakeConstraints { make in
+            make.trailing.equalTo(bubbleView.snp.trailing)
+            make.centerY.equalTo(bubbleView.snp.top)
+            make.size.equalTo(topContainerSize)
+        }
     }
 
     private func updateUI(_ replyData: TUIReplyMessageCellData?) {
@@ -220,8 +254,24 @@ public class TUIReplyMessageCell_Minimalist: TUIBubbleMessageCell_Minimalist, UI
 
     override public func layoutSubviews() {
         super.layoutSubviews()
-        updateUI(replyData)
-        layoutBottomContainer()
+        // Use frame-based layout for messageModifyRepliesButton to avoid constraint update loop
+        layoutMessageModifyRepliesButton()
+    }
+
+    private func layoutMessageModifyRepliesButton() {
+        guard let replyData = replyData else { return }
+        guard !CGSizeEqualToSize(replyData.bottomContainerSize, CGSize.zero) else { return }
+        
+        if !messageModifyRepliesButton.isHidden {
+            let oldRect = messageModifyRepliesButton.frame
+            let newRect = CGRect(x: oldRect.origin.x, y: bottomContainer.frame.maxY, width: oldRect.size.width, height: oldRect.size.height)
+            messageModifyRepliesButton.frame = newRect
+        }
+
+        for view in replyAvatarImageViews {
+            let oldRect = view.frame
+            view.frame = CGRect(x: oldRect.origin.x, y: bottomContainer.frame.maxY + 5, width: oldRect.size.width, height: oldRect.size.height)
+        }
     }
 
     private func layoutBottomContainer() {
@@ -239,18 +289,6 @@ public class TUIReplyMessageCell_Minimalist: TUIBubbleMessageCell_Minimalist, UI
             }
             make.top.equalTo(bubbleView.snp.bottom).offset((messageData?.messageContainerAppendSize.height ?? 0) + 6)
             make.size.equalTo(size)
-        }
-
-        if !messageModifyRepliesButton.isHidden {
-            let oldRect = messageModifyRepliesButton.frame
-            let newRect = CGRect(x: oldRect.origin.x, y: bottomContainer.frame.maxY, width: oldRect.size.width, height: oldRect.size.height)
-            messageModifyRepliesButton.frame = newRect
-        }
-
-        for view in replyAvatarImageViews {
-            let oldRect = view.frame
-            _ = CGRect(x: oldRect.origin.x, y: bottomContainer.frame.maxY + 5, width: oldRect.size.width, height: oldRect.size.height)
-            view.frame = oldRect
         }
     }
 

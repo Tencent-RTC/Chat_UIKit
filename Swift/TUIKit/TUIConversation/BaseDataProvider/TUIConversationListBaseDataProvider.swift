@@ -263,22 +263,10 @@ open class TUIConversationListBaseDataProvider: NSObject, V2TIMConversationListe
             handleInsertConversationList(addedDataList)
         }
 
-        // Check if only AI conversation exists
-        var onlyAIConversation = false
-        if duplicateDataList.count == 1 {
-            if let firstCellData = duplicateDataList.first,
-               let conversationID = firstCellData.conversationID,
-               conversationID.contains("@RBT#") {
-                onlyAIConversation = true
-            }
-        }
 
         updateMardHide(&markHideDataList)
 
-        // Skip updateMarkUnreadCount for AI-only conversations
-        if !onlyAIConversation {
-            updateMarkUnreadCount()
-        }
+        updateMarkUnreadCount()
 
         updateMarkFold(&markFoldDataList)
 
@@ -736,11 +724,11 @@ open class TUIConversationListBaseDataProvider: NSObject, V2TIMConversationListe
     }
 
     public func onConnectFailed(_ code: Int32, err: String?) {
-        NSLog("%s", #function)
+        print("\(#function)")
     }
 
     public func onConnectSuccess() {
-        NSLog("%s", #function)
+        print("\(#function)")
         if !conversationList.isEmpty {
             let conversationList = Array(conversationList)
             updateOnlineStatus(conversationList)
@@ -748,7 +736,7 @@ open class TUIConversationListBaseDataProvider: NSObject, V2TIMConversationListe
     }
 
     @objc public func onLoginSucc() {
-        NSLog("%s", #function)
+        print("\(#function)")
         if !conversationList.isEmpty {
             let conversationList = Array(conversationList)
             updateOnlineStatus(conversationList)

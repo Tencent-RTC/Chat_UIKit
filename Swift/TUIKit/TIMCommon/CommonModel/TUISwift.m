@@ -477,6 +477,19 @@
     return TUIPollBundleThemeImage(imageName, defaultImage);
 }
 
++ (UIImage *)tuiOfficialAccountBundleThemeImage:(NSString *)imageName defaultImage:(NSString *)defaultImage {
+    // TUIThemeModule extension for OfficialAccount
+    NSInteger themeModule = 0x1 << 26;
+    // Get bundle path for TUIOfficialAccountPlugin
+    NSString *bundlePath = TUIBundlePath(@"TUIOfficialAccount", @"TUIOfficialAccountPlugin.TUIOfficialAccountService");
+    NSString *imagePath = [bundlePath stringByAppendingPathComponent:defaultImage];
+    UIImage *defaultImg = [UIImage imageNamed:imagePath];
+    if (!defaultImg) {
+        defaultImg = [UIImage imageNamed:defaultImage];
+    }
+    return TUIDynamicImage(imageName, themeModule, defaultImg);
+}
+
 + (NSString *)timCommonThemePath {
     return TIMCommonThemePath;
 }

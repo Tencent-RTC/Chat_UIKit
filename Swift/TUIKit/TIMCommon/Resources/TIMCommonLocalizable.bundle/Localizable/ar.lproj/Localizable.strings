@@ -184,6 +184,13 @@
 "TUIKitInputRecordReleaseToCancel" = "رفع الإصبع للإلغاء";
 "TUIKitInputRecordTimeshort" = "مدة التسجيل قصيرة جدًا";
 "TUIKitInputRecordTimeLong" = "مدة التسجيل طويلة جدًا";
+"TUIKitInputCancel" = "إلغاء";
+"TUIKitInputConvertToText" = "تحويل إلى نص";
+"TUIKitInputReleaseToConvertToText" = "إصدار لتحويل النص";
+"TUIKitInputSendOriginalVoice" = "إرسال الصوت الأصلي";
+"TUIKitInputSend" = "إرسال";
+"TUIKitInputNoTextRecognized" = "لم يتم التعرف على أي نص";
+"TUIKitInputNoNetworkOrNotLoggedIn" = "لا توجد شبكة أو لم يتم تسجيل الدخول";
 
 "TUIKitGroupProfileDetails" = "تفاصيل الملف الشخصي";
 "TUIKitGroupProfileMember" = "أعضاء المجموعة";
@@ -512,12 +519,31 @@
 "TUIKitGroupMessagePinRepeatedly" = "لقد تم تثبيت هذه الرسالة";
 "TUIKitGroupMessageUnPinRepeatedly" = "تم إلغاء تثبيت هذه الرسالة";
 
+"TUIKitTextToVoice" = "تحويل النص إلى صوت";
+"TUIKitErrorConvertTextToVoiceFailed" = "فشل تحويل النص إلى صوت";
+"TUIKitErrorTTSTextTooLong" = "النص طويل جدًا (الحد الأقصى 255 حرفًا)";
+
 "TUIKitTranslate" = "ترجمة";
 "TUIKitTranslateDefaultTips" = "تقدم خدمة الترجمة بواسطة Tencent Cloud IM";
 "TUIKitTranslateFailed" = "فشل الترجمة";
 "Hide" = "إخفاء";
 "TranslateMessage" = "ترجمة الرسالة إلى";
 "TranslateLanguageNotSupport" = "اللغة المستهدفة غير مدعومة، يرجى تغيير اللغة";
+"TranslationSettings" = "إعدادات الترجمة";
+"AutoTranslateReceivedMessages" = "ترجمة تلقائية للرسائل المستلمة في الدردشة";
+"AutoTranslateDescription" = "عند التمكين، سيتم ترجمة الرسائل المستلمة في الدردشة تلقائيًا";
+"ShowBilingual" = "عرض ثنائي اللغة";
+"ShowBilingualDescription" = "عند التمكين، سيتم عرض كل من النص الأصلي والترجمة";
+"ShowOriginalText" = "عرض الأصل";
+
+"VoiceMessageSettings" = "إعدادات الرسائل الصوتية";
+"AutoPlayVoice" = "تشغيل تلقائي للصوت";
+"AutoPlayVoiceDescription" = "عند التمكين، سيتم تشغيل جميع الرسائل الصوتية المستلمة تلقائيًا";
+"AutoVoiceToText" = "تحويل تلقائي للصوت إلى نص";
+"AutoVoiceToTextDescription" = "عند التمكين، سيتم تحويل جميع الرسائل الصوتية المستلمة تلقائيًا إلى نص";
+"AutoTextToVoice" = "تحويل تلقائي للنص إلى صوت";
+"AutoTextToVoiceDescription" = "عند التمكين، سيتم تحويل جميع الرسائل النصية المستلمة تلقائيًا إلى صوت";
+"TextToVoiceSettings" = "إعدادات تحويل النص إلى صوت";
 
 "TUIKitConvertToText" = "تحويل النص";
 "TUIKitConvertToTextFailed" = "فشل تحويل";
@@ -800,3 +826,66 @@
 "zh-Hant" = "الصينية التقليدية";
 "TUIChatFaceGroupAllEmojiName" = "جميع التعبيرات";
 "TUIChatFaceGroupRecentEmojiName" = "مستخدم حديثا";
+
+"TUITranslationLanguageTitle" = "لغة الترجمة";
+"TUITranslationLanguageDescription" = "تعيين اللغة المستهدفة لترجمة الرسائل";
+
+// Voice message settings
+"TUIKitOn" = "تشغيل";
+"TUIKitOff" = "إيقاف";
+"FollowGlobalSetting" = "اتباع الإعداد العام";
+
+// Voice Clone
+"VoiceClone" = "استنساخ الصوت";
+"VoiceCloneInstruction" = "يرجى تسجيل 10-18 ثانية من الصوت لاستنساخ صوتك المخصص";
+"VoiceCloneSampleText" = "النص المقترح للقراءة:\n\n\"مرحباً بالجميع، أنا مساعدك الصوتي الشخصي، سعيد بخدمتك. الطقس جميل اليوم، أتمنى لك يوماً سعيداً.\"";
+"VoiceCloneTapToRecord" = "انقر لبدء التسجيل";
+"VoiceCloneTapToStop" = "انقر لإيقاف التسجيل";
+"VoiceCloneRecordingComplete" = "اكتمل التسجيل";
+"VoiceCloneNamePlaceholder" = "أدخل اسم الصوت (اختياري)";
+"VoiceCloneSubmit" = "إرسال الاستنساخ";
+"VoiceCloneDefaultName" = "صوتي";
+"VoiceCloneSuccess" = "نجح الاستنساخ";
+"VoiceCloneSuccessMessage" = "تم إنشاء صوتك المخصص بنجاح!";
+"VoiceCloneFailed" = "فشل الاستنساخ";
+"VoiceCloneRecordTooShort" = "التسجيل قصير جداً";
+"VoiceCloneRecordTooShortMessage" = "يرجى تسجيل 3 ثوانٍ على الأقل";
+"VoiceCloneMicPermissionRequired" = "مطلوب إذن الميكروفون";
+"VoiceCloneMicPermissionMessage" = "يرجى السماح بالوصول إلى الميكروفون في الإعدادات";
+"VoiceCloneGoToSettings" = "الذهاب للإعدادات";
+"VoiceCloneDescription" = "تسجيل صوت لاستنساخ صوت مخصص";
+
+// Voice Selection
+"VoiceSelection" = "اختيار الصوت";
+"VoiceSelectionDescription" = "اختر الصوت لتحويل النص إلى كلام";
+"VoiceSettings" = "إعدادات الصوت";
+"DefaultVoices" = "الأصوات الافتراضية";
+"CustomVoices" = "الأصوات المخصصة";
+"NoCustomVoices" = "لا توجد أصوات مخصصة";
+"CustomVoiceBadge" = "مخصص";
+"DeleteVoice" = "حذف الصوت";
+"DeleteVoiceConfirmFormat" = "هل أنت متأكد من حذف الصوت \"%@\"؟";
+"DeleteVoiceFailed" = "فشل الحذف";
+
+// Default Voice Names
+"VoiceDefault" = "افتراضي";
+"VoiceFollowGlobal" = "اتبع العام";
+"VoiceXiaoxuMale" = "شياوشو (ذكر)";
+"VoiceXiaomeiFemale" = "شياومي (أنثى)";
+"VoiceXiaoxinFemale" = "شياوشين (أنثى)";
+"VoiceXiaoyueFemale" = "شياويو (أنثى)";
+"Default" = "افتراضي";
+
+// Official Channel
+"TUIKitOfficialAccount" = "الحساب الرسمي";
+"TUIKitOfficialChannel" = "الحساب الرسمي";
+"TUIKitCreatedAccounts" = "أنشأتها";
+"TUIKitFollowedAccounts" = "أتابعها";
+"TUIKitRecommendedAccounts" = "اكتشف الحسابات الرسمية للمتابعة";
+"TUIKitSubscribers" = "مشترك";
+"TUIKitFollowing" = "متابَع";
+"TUIKitFollow" = "متابعة";
+"TUIKitNoOfficialAccounts" = "لا توجد حسابات رسمية";
+"TUIKitSendMessage" = "إرسال رسالة";
+"TUIKitNoData" = "لا توجد بيانات";
+"TUIKitImageSaved" = "تم حفظ الصورة";

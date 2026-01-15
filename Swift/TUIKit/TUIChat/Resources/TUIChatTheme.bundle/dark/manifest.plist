@@ -192,5 +192,17 @@
 	<string>chat_ai_clear_icon</string>
 	<key>chat_ai_interrupt_icon_img</key>
 	<string>chat_ai_interrupt_icon</string>
+	<key>chat_record_error_color</key>
+	<string>#FA5251</string>
+	<key>chat_record_disabled_btn_color</key>
+	<string>#4A6A9A</string>
+	<key>chat_record_btn_bg_color</key>
+	<string>#3D3D3D</string>
+	<key>chat_record_btn_text_color</key>
+	<string>#AAAAAA</string>
+	<key>chat_record_waveform_bar_color</key>
+	<string>#FFFFFF4D</string>
+	<key>chat_record_dark_text_color</key>
+	<string>#FFFFFFE5</string>
 </dict>
 </plist>

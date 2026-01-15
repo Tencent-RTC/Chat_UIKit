@@ -9,6 +9,7 @@ class TUIContactActionCellData_Minimalist: TUICommonCellData {
     var icon: UIImage?
     @objc dynamic var readNum: Int = 0
     var needBottomLine: Bool = true
+    var onClicked: (([String: Any]?) -> Void)?
     
     override init() {
         super.init()

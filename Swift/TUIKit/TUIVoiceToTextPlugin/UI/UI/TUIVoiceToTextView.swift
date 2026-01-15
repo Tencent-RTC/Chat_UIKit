@@ -127,6 +127,7 @@ class TUIVoiceToTextView: UIView {
         textView.isScrollEnabled = false
         textView.isEditable = false
         textView.textAlignment = TUISwift.isRTL() ? .right : .left
+        textView.semanticContentAttribute = TUISwift.isRTL() ? .forceRightToLeft : .forceLeftToRight
         textView.font = UIFont.systemFont(ofSize: 16)
         textView.disableHighlightLink()
         textView.textColor = TUISwift.tuiVoice(toTextDynamicColor: "convert_voice_text_view_text_color", defaultColor: "#000000")
@@ -189,7 +190,7 @@ class TUIVoiceToTextView: UIView {
         backgroundColor = bgColor
         textView.textColor = textColor
         if isConverted {
-            textView.text = rtlString(text)
+            textView.text = text
         }
         textView.isHidden = !isConverted
         retryView.isHidden = !(status == .securityStrike)

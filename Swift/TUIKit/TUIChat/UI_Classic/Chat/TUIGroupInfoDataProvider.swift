@@ -15,6 +15,8 @@ import TUICore
     @objc func didDeleteGroup(_ cell: TUIButtonCell)
     @objc func didClearAllHistory(_ cell: TUIButtonCell)
     @objc func didSelectGroupNotice()
+    @objc optional func didSelectExtensionSwitch(_ cell: TUICommonSwitchCell)
+    @objc optional func didSelectVoiceSetting(_ cell: TUICommonTextCell)
 }
 
 class TUIGroupInfoDataProvider: NSObject, V2TIMGroupListener {
@@ -292,6 +294,35 @@ class TUIGroupInfoDataProvider: NSObject, V2TIMGroupListener {
                 groupNickNameCellData = nickData
                 dataList.append([nickData])
             }
+            
+            // Voice message settings section (after alias)
+            let extensionParam: [String: Any] = [
+                "groupID": groupID,
+                "pushVC": delegate?.pushNavigationController() as Any
+            ]
+            let extensionList = TUICore.getExtensionList(
+                "TUICore_TUIChatExtension_GroupProfileSettingsSwitch_ClassicExtensionID",
+                param: extensionParam
+            )
+            
+            if !extensionList.isEmpty {
+                var voiceSettingsArray: [Any] = []
+                for info in extensionList {
+                    if let infoData = info.data,
+                       let displayValue = infoData["displayValue"] as? String {
+                        let textData = TUICommonTextCellData()
+                        textData.key = info.text ?? ""
+                        textData.value = displayValue
+                        textData.showAccessory = true
+                        textData.cselector = #selector(didSelectVoiceSetting(_:))
+                        textData.tui_extValueObj = info
+                        voiceSettingsArray.append(textData)
+                    }
+                }
+                if !voiceSettingsArray.isEmpty {
+                    dataList.append(voiceSettingsArray)
+                }
+            }
 
             let markFold = TUICommonSwitchCellData()
             let switchData = TUICommonSwitchCellData()
@@ -450,6 +481,14 @@ class TUIGroupInfoDataProvider: NSObject, V2TIMGroupListener {
 
     @objc func didSelectNotice() {
         delegate?.didSelectGroupNotice()
+    }
+    
+    @objc func didSelectExtensionSwitch(_ cell: TUICommonSwitchCell) {
+        delegate?.didSelectExtensionSwitch?(cell)
+    }
+    
+    @objc func didSelectVoiceSetting(_ cell: TUICommonTextCell) {
+        delegate?.didSelectVoiceSetting?(cell)
     }
 
     @objc func didReportGroup(_ cell: TUIButtonCell) {

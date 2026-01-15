@@ -2,6 +2,7 @@
 //  TUIContact
 
 import TIMCommon
+import TUICore
 import UIKit
 
 protocol TUIContactControllerListener_Minimalist: AnyObject {
@@ -73,15 +74,51 @@ public class TUIContactController_Minimalist: UIViewController, UITableViewDeleg
             let data = TUIContactActionCellData_Minimalist()
             data.title = TUISwift.timCommonLocalizableString("TUIKitContactsBlackList")
             data.cselector = #selector(onBlackList(_:))
-            data.needBottomLine = false
             return data
         }())
+        
+        // Add extensions
+        addExtensionsToList(list: &list)
+        
+        // Set needBottomLine for last item
+        if let lastItem = list.last {
+            lastItem.needBottomLine = false
+        }
+        
         firstGroupData = list
 
         setupNavigator()
         setupViews()
 
         NotificationCenter.default.addObserver(self, selector: #selector(onFriendInfoChanged(_:)), name: NSNotification.Name("FriendInfoChangedNotification"), object: nil)
+    }
+    
+    private func addExtensionsToList(list: inout [TUIContactActionCellData_Minimalist]) {
+        let param: [String: Any] = ["TUICore_TUIContactExtension_ContactMenu_Nav": navigationController as Any]
+        let extensionList = TUICore.getExtensionList("TUICore_TUIContactExtension_ContactMenu_MinimalistExtensionID", param: param)
+        let sortedExtensionList = extensionList.sorted { $0.weight > $1.weight }
+        for info in sortedExtensionList {
+            list.append({
+                let data = TUIContactActionCellData_Minimalist()
+                data.icon = info.icon
+                data.title = info.text ?? ""
+                data.cselector = #selector(onExtensionClicked(_:))
+                data.onClicked = { param in
+                    info.onClicked?(param ?? [:])
+                }
+                return data
+            }())
+        }
+    }
+    
+    @objc private func onExtensionClicked(_ cell: TUICommonTableViewCell) {
+        if let data = cell.data as? TUIContactActionCellData_Minimalist {
+            var param: [String: Any] = [:]
+            if let nav = navigationController {
+                param["navigationController"] = nav
+            }
+            data.onClicked?(param)
+        }
     }
 
     deinit {

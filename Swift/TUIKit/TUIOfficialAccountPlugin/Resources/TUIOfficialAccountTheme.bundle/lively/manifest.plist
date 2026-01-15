@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>id</key>
+	<string>lively</string>
+	<key>name</key>
+	<string>活泼</string>
+	<key>name_en</key>
+	<string>Lively</string>
+	<key>official_account_bg_color</key>
+	<string>#FFFFFF</string>
+	<key>official_account_title_color</key>
+	<string>#000000</string>
+	<key>official_account_desc_color</key>
+	<string>#666666</string>
+	<key>official_account_separator_color</key>
+	<string>#EEEEEE</string>
+	<key>official_account_follow_btn_color</key>
+	<string>#FF6B00</string>
+	<key>official_account_follow_btn_text_color</key>
+	<string>#FFFFFF</string>
+	<key>official_account_following_btn_color</key>
+	<string>#EEEEEE</string>
+	<key>official_account_following_btn_text_color</key>
+	<string>#666666</string>
+	<key>official_account_section_bg_color</key>
+	<string>#F9F9F9</string>
+	<key>official_account_cell_bg_color</key>
+	<string>#FFFFFF</string>
+	<key>official_account_placeholder_img</key>
+	<string>official_account_placeholder.png</string>
+	<key>official_account_following_img</key>
+	<string>official_account_following.png</string>
+	<key>official_account_msg_img</key>
+	<string>official_account_msg.png</string>
+</dict>
+</plist>

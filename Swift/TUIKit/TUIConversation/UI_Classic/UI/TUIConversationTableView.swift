@@ -123,11 +123,24 @@ open class TUIConversationTableView: UITableView, UITableViewDelegate, UITableVi
             }
             return
         }
+        
+        // Validate section and row consistency before insert to avoid crash
+        let currentSectionCount = numberOfSections
+        let currentRowCount = currentSectionCount > 0 ? numberOfRows(inSection: 0) : 0
+        let expectedRowCount = currentRowCount + indexPaths.count
+        let actualRowCount = dataProvider.conversationList.count
+        
+        // Check: only 1 section expected, and row count matches
+        if currentSectionCount != 1 || expectedRowCount != actualRowCount {
+            reloadData()
+            return
+        }
+        
         UIView.performWithoutAnimation {
             self.insertRows(at: indexPaths, with: .none)
         }
     }
-    
+
     public func reloadConversations(at indexPaths: [IndexPath]) {
         if !Thread.isMainThread {
             DispatchQueue.main.async {

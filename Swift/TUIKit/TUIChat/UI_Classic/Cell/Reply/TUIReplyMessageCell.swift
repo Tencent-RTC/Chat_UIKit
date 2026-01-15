@@ -63,11 +63,27 @@ public class TUIReplyMessageCell: TUIBubbleMessageCell, UITextViewDelegate, TUIT
 
         bottomContainer = UIView()
         contentView.addSubview(bottomContainer)
+
+        topContainer = TUIPassthroughView()
+        topContainer.isUserInteractionEnabled = true
+        topContainer.clipsToBounds = false
+        contentView.addSubview(topContainer)
     }
 
     override public func notifyBottomContainerReady(of cellData: TUIMessageCellData?) {
         let param: [String: Any] = ["TUICore_TUIChatExtension_BottomContainer_CellData": replyData as Any]
         TUICore.raiseExtension("TUICore_TUIChatExtension_BottomContainer_ClassicExtensionID", parentView: bottomContainer, param: param)
+    }
+
+    override public func notifyTopContainerReady(of cellData: TUIMessageCellData?) {
+        guard let replyData = replyData else { return }
+        let param: [String: Any] = ["TUICore_TUIChatExtension_TopContainer_CellData": replyData]
+        let hasExtension = TUICore.raiseExtension("TUICore_TUIChatExtension_TopContainer_ClassicExtensionID", parentView: topContainer, param: param)
+        topContainer.isHidden = !hasExtension
+
+        if hasExtension {
+            layoutTopContainer()
+        }
     }
 
     override public func fill(with data: TUICommonCellData) {
@@ -125,6 +141,25 @@ public class TUIReplyMessageCell: TUIBubbleMessageCell, UITextViewDelegate, TUIT
         super.updateConstraints()
         updateUI(replyData)
         layoutBottomContainer()
+        layoutTopContainer()
+    }
+
+    private func layoutTopContainer() {
+        guard !topContainer.isHidden else { return }
+        guard let replyData = replyData else { return }
+
+        let topContainerSize = replyData.topContainerSize
+        guard topContainerSize.width > 0 && topContainerSize.height > 0 else {
+            topContainer.isHidden = true
+            return
+        }
+
+        // Position topContainer at top-right corner of bubbleView
+        topContainer.snp.remakeConstraints { make in
+            make.trailing.equalTo(bubbleView.snp.trailing)
+            make.centerY.equalTo(bubbleView.snp.top)
+            make.size.equalTo(topContainerSize)
+        }
     }
 
     private func updateUI(_ replyData: TUIReplyMessageCellData?) {

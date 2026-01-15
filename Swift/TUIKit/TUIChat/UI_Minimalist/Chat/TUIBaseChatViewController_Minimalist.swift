@@ -96,7 +96,6 @@ public class TUIBaseChatViewController_Minimalist: UIViewController, TUIBaseMess
         controller.view.autoresizingMask = .flexibleTopMargin
         addChild(controller)
         view.addSubview(controller.view)
-        controller.view.isHidden = !TUIChatConfig.shared.enableMainPageInputBar
         
         // AI conversation style setup
         if let data = conversationData, data.isAIConversation() {
@@ -169,6 +168,11 @@ public class TUIBaseChatViewController_Minimalist: UIViewController, TUIBaseMess
         setupMessageController()
         setupInputMoreMenu()
         _ = inputController
+        
+        // For official account, remove input bar from view hierarchy
+        if !shouldShowInputBar() {
+            inputController.view.removeFromSuperview()
+        }
 
         // data provider
         dataProvider = TUIChatDataProvider()
@@ -402,8 +406,11 @@ public class TUIBaseChatViewController_Minimalist: UIViewController, TUIBaseMess
             param["TUICore_TUIChatExtension_NavigationMoreItem_GroupID"] = groupID
         }
         param["TUICore_TUIChatExtension_NavigationMoreItem_ItemSize"] = itemSize
-        param["TUICore_TUIChatExtension_NavigationMoreItem_FilterVideoCall"] = !TUIChatConfig.shared.enableVideoCall
-        param["TUICore_TUIChatExtension_NavigationMoreItem_FilterAudioCall"] = !TUIChatConfig.shared.enableAudioCall
+        
+        // Hide audio/video call buttons for official account
+        let isOfficialAccount = isOfficialAccountConversation()
+        param["TUICore_TUIChatExtension_NavigationMoreItem_FilterVideoCall"] = isOfficialAccount || !TUIChatConfig.shared.enableVideoCall
+        param["TUICore_TUIChatExtension_NavigationMoreItem_FilterAudioCall"] = isOfficialAccount || !TUIChatConfig.shared.enableAudioCall
 
         let extensionList: [TUIExtensionInfo]? = TUICore.getExtensionList("TUICore_TUIChatExtension_NavigationMoreItem_MinimalistExtensionID", param: param)
         if let extensionList = extensionList {
@@ -439,8 +446,10 @@ public class TUIBaseChatViewController_Minimalist: UIViewController, TUIBaseMess
         messageController!.delegate = self
         messageController!.setConversation(conversationData: conversationData)
 
-        let textViewHeight = TUIChatConfig.shared.enableMainPageInputBar ? TTextView_Height : 0
-        let height = view.frame.size.height - CGFloat(textViewHeight) - TUISwift.bottom_SafeHeight() - topMarginByCustomView()
+        // Calculate message view height based on whether input bar is shown
+        let textViewHeight = getInputBarHeight()
+        let bottomSafeHeight = getBottomSafeHeight()
+        let height = view.frame.size.height - textViewHeight - bottomSafeHeight - topMarginByCustomView()
         messageController!.view.frame = CGRect(x: 0, y: topMarginByCustomView(), width: view.frame.size.width,
                                                height: height)
 
@@ -673,11 +682,10 @@ public class TUIBaseChatViewController_Minimalist: UIViewController, TUIBaseMess
         }
 
         let topMarginByCustomView = topMarginByCustomView()
-        let textViewHeight = TUIChatConfig.shared.enableMainPageInputBar ? TTextView_Height : 0
+        let textViewHeight = getInputBarHeight()
+        let bottomSafeHeight = getBottomSafeHeight()
         messageController?.view.frame = CGRect(x: 0, y: topMarginByCustomView, width: view.bounds.width,
-                                               height: view.bounds.height - CGFloat(textViewHeight) - TUISwift.bottom_SafeHeight() - topMarginByCustomView)
-
-        messageController?.scrollToBottom(true)
+                                               height: view.bounds.height - textViewHeight - bottomSafeHeight - topMarginByCustomView)        
     }
 
     private func topMarginByCustomView() -> CGFloat {
@@ -687,6 +695,27 @@ public class TUIBaseChatViewController_Minimalist: UIViewController, TUIBaseMess
 
         let height = customTopViewHeight + topExtsionHeight + groupPinTopViewHeight
         return height
+    }
+    
+    // MARK: - Input Bar Control
+    
+    /// Check if input bar should be shown for current conversation
+    /// - Returns: true if input bar should be visible, false otherwise
+    private func shouldShowInputBar() -> Bool {
+        let isOfficialAccount = isOfficialAccountConversation()
+        return !isOfficialAccount && TUIChatConfig.shared.enableMainPageInputBar
+    }
+    
+    /// Get input bar height considering current conversation type
+    /// - Returns: Input bar height (0 if should be hidden)
+    private func getInputBarHeight() -> CGFloat {
+        return shouldShowInputBar() ? CGFloat(TTextView_Height) : 0
+    }
+    
+    /// Get bottom safe area height considering current conversation type
+    /// - Returns: Bottom safe area height (0 if input bar is hidden)
+    private func getBottomSafeHeight() -> CGFloat {
+        return shouldShowInputBar() ? TUISwift.bottom_SafeHeight() : 0
     }
 
     // MARK: - Event
@@ -745,7 +774,21 @@ public class TUIBaseChatViewController_Minimalist: UIViewController, TUIBaseMess
     @objc func onInfoViewTapped() {
         inputController.reset()
         guard let conversationData = conversationData else { return }
+        
+        // Check if this is an official account and navigate to official account info page 
         if let userID = conversationData.userID, !userID.isEmpty {
+            if isOfficialAccountUser(userID) {
+                // Navigate to official account info page
+                guard let nav = navigationController else { return }
+                var param: [String: Any] = [
+                    "navigationController": nav,
+                    "officialAccountID": userID,
+                    "isFromChatPage": true
+                ]
+                TUICore.callService("TUIOfficialAccountService", method: "showOfficialAccountInfo", param: param)
+                return
+            }
+            
             getUserOrFriendProfileVCWithUserID(userID, succBlock: { [weak self] vc in
                 guard let self = self else { return }
                 self.navigationController?.pushViewController(vc, animated: true)
@@ -916,6 +959,11 @@ public class TUIBaseChatViewController_Minimalist: UIViewController, TUIBaseMess
 
     func inputController(_ inputController: TUIInputController_Minimalist, didChangeHeight height: CGFloat) {
         guard responseKeyboard else { return }
+        
+        // For conversations without input bar (e.g., official account), do not adjust layout
+        if !shouldShowInputBar() {
+            return
+        }
 
         guard let messageController = messageController else { return }
         UIView.animate(withDuration: 0.3, delay: 0, options: .curveEaseOut, animations: {
@@ -1699,5 +1747,22 @@ public class TUIBaseChatViewController_Minimalist: UIViewController, TUIBaseMess
             self.hudBackgroundView = nil
             self.hudLabel = nil
         }
+    }
+    
+    // MARK: - Official Account Helper Methods
+    
+    /// Check if userID is an official account (same as Android: @TOA#_)
+    /// - Parameter userID: User ID to check
+    /// - Returns: True if userID is an official account
+    private func isOfficialAccountUser(_ userID: String?) -> Bool {
+        guard let userID = userID else { return false }
+        return userID.hasPrefix("@TOA#_")
+    }
+    
+    /// Check if current conversation is an official account conversation
+    /// - Returns: True if current conversation is an official account conversation
+    private func isOfficialAccountConversation() -> Bool {
+        guard let userID = conversationData?.userID else { return false }
+        return isOfficialAccountUser(userID)
     }
 }

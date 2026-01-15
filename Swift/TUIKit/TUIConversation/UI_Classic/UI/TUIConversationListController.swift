@@ -6,7 +6,7 @@ let GroupBtnSpace: CGFloat = 24
 let GroupScrollViewHeight: CGFloat = 30
 
 public class TUIConversationListController: UIViewController, UIGestureRecognizerDelegate, TUINotificationProtocol, TUIPopViewDelegate, TUIConversationTableViewDelegate, TUIConversationListDataProviderDelegate {
-    weak var delegate: TUIConversationListControllerListener?
+    public weak var delegate: TUIConversationListControllerListener?
     var isShowBanner: Bool = true
     var isShowConversationGroup: Bool = true
     var viewHeight: CGFloat = 0.0

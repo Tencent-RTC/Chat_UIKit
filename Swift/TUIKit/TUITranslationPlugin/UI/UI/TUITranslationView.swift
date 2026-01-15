@@ -17,6 +17,9 @@ class TUITranslationView: UIView {
     
     private var cellData: TUIMessageCellData!
     
+    // Button container - will be added to parent view (bottomContainer)
+    private var buttonContainer: UIView?
+    
     convenience init(data: TUIMessageCellData) {
         self.init(frame: CGRect.zero)
         self.cellData = data
@@ -56,12 +59,23 @@ class TUITranslationView: UIView {
             status = TUITranslationDataProvider.getTranslationStatus(msg)
         }
         
-        let size = calcSize(of: status)
-        if !cellData.bottomContainerSize.equalTo(size) {
+        let translationSize = calcSize(of: status)
+        
+        // Bottom container should include translation view and optional "Show Original" button
+        var containerSize = translationSize
+        if shouldShowOriginalButton() {
+            let buttonHeight: CGFloat = 24
+            let buttonTopMargin: CGFloat = 2
+            containerSize.height += buttonHeight + buttonTopMargin
+        }
+        
+        if !cellData.bottomContainerSize.equalTo(containerSize) {
             notifyTranslationChanged()
         }
-        cellData.bottomContainerSize = size
-        mm_top(0).mm_left(0).mm_width(size.width).mm_height(size.height)
+        cellData.bottomContainerSize = containerSize
+        
+        // Set translation view frame to its own content size (without button area)
+        mm_top(0).mm_left(0).mm_width(translationSize.width).mm_height(translationSize.height)
 //        snp.makeConstraints { make in
 //            make.top.left.equalTo(0)
 //            make.width.equalTo(size.width)
@@ -72,10 +86,47 @@ class TUITranslationView: UIView {
         } else if status == .shown || status == .securityStrike {
             stopLoading()
             updateTranslationView(by: text, translationViewStatus: status)
+            
+            // Apply bilingual mode setting when translation is shown
+            applyBilingualModeSetting(cellData: cellData, status: status)
         }
         setNeedsUpdateConstraints()
         updateConstraintsIfNeeded()
         layoutIfNeeded()
+    }
+    
+    /// Apply bilingual mode setting to hide/show original text
+    private func applyBilingualModeSetting(cellData: TUIMessageCellData, status: TUITranslationViewStatus) {
+        guard let message = cellData.innerMessage else { return }
+        
+        // If user manually requested to show original, respect that choice
+        if TUITranslationDataProvider.userRequestedShowOriginal(message) {
+            TUITranslationDataProvider.setShouldHideOriginalText(false, for: message)
+            return
+        }
+        
+        let previousShouldHide = TUITranslationDataProvider.shouldHideOriginalText(message)
+        
+        // Only apply when translation is successfully shown
+        if status == .shown || status == .securityStrike {
+            if !TUITranslationConfig.shared.showBilingualEnabled {
+                // Bilingual mode OFF: hide original text
+                TUITranslationDataProvider.setShouldHideOriginalText(true, for: message)
+            } else {
+                // Bilingual mode ON: show both original and translation
+                TUITranslationDataProvider.setShouldHideOriginalText(false, for: message)
+            }
+        } else {
+            // Translation not shown: always show original text
+            TUITranslationDataProvider.setShouldHideOriginalText(false, for: message)
+        }
+        
+        let currentShouldHide = TUITranslationDataProvider.shouldHideOriginalText(message)
+        
+        // If shouldHideOriginalText changed, trigger height recalculation
+        if previousShouldHide != currentShouldHide {
+            notifyTranslationChanged()
+        }
     }
     
     private func calcSize(of status: TUITranslationViewStatus) -> CGSize {
@@ -97,6 +148,7 @@ class TUITranslationView: UIView {
         paragraphStyle.alignment = .left
         
         var textRect = attrStr.boundingRect(with: CGSize(width: actualTextWidth, height: .greatestFiniteMagnitude), options: [.usesLineFragmentOrigin, .usesFontLeading], context: nil)
+        
         if textRect.height < 30 {
             return CGSize(width: max(textRect.width, minTextWidth) + commonMargins, height: max(textRect.height, oneLineTextHeight) + commonMargins + tipsHeight + tipsBottomMargin)
         }
@@ -106,9 +158,42 @@ class TUITranslationView: UIView {
         return CGSize(width: ceil(result.width), height: ceil(result.height))
     }
     
+    /// Determine if \"Show Original\" button should be displayed
+    func shouldShowOriginalButton() -> Bool {
+        guard let message = cellData?.innerMessage else { return false }
+        
+        // Reference and reply messages should NOT show this button
+        // They must always display original text
+        if isReferenceOrReplyMessage(message) {
+            return false
+        }
+        
+        // Show button only when:
+        // 1. Translation is shown
+        // 2. Global bilingual mode is OFF
+        // 3. Original text is currently hidden
+        return TUITranslationDataProvider.shouldHideOriginalText(message) && !TUITranslationConfig.shared.showBilingualEnabled
+    }
+    
+    /// Check if message is a reference or reply message by parsing cloudCustomData
+    private func isReferenceOrReplyMessage(_ message: V2TIMMessage) -> Bool {
+        guard let cloudCustomData = message.cloudCustomData,
+              let dict = try? JSONSerialization.jsonObject(with: cloudCustomData) as? [String: Any]
+        else {
+            return false
+        }
+        
+        // Check for messageReply key which indicates reply/reference message
+        if dict["messageReply"] as? [String: Any] != nil {
+            return true
+        }
+        return false
+    }
+    
     private func setupViews() {
         backgroundColor = bgColor ?? TUISwift.tuiTranslationDynamicColor("translation_view_bg_color", defaultColor: "#F2F7FF")
         layer.cornerRadius = 10.0
+        clipsToBounds = true
         
         loadingView.frame = CGRect(x: 0, y: 0, width: 15, height: 15)
         loadingView.image = TUISwift.tuiTranslationBundleThemeImage("translation_view_icon_loading_img", defaultImage: "translation_loading")
@@ -174,8 +259,11 @@ class TUITranslationView: UIView {
                 make.centerY.equalToSuperview()
                 make.width.height.equalTo(20)
             }
+            
+            let adjustedHeight = self.frame.height
+            
             textView.snp.remakeConstraints { make in
-                make.height.equalTo(self.frame.height - 10 - 40 + 2)
+                make.height.equalTo(adjustedHeight - 10 - 40 + 2)
                 make.leading.equalTo(10)
                 make.trailing.equalTo(-10)
                 make.top.equalTo(10)
@@ -192,6 +280,9 @@ class TUITranslationView: UIView {
                 make.trailing.equalTo(textView.snp.trailing)
             }
         }
+        
+        // Update button container if exists
+        updateShowOriginalButton()
     }
     
     private func updateTranslationView(by text: String?, translationViewStatus status: TUITranslationViewStatus) {
@@ -214,6 +305,74 @@ class TUITranslationView: UIView {
         tipsIcon.isHidden = !isTranslated
         tipsLabel.isHidden = !isTranslated
         retryView.isHidden = !(status == .securityStrike)
+        
+        // Update "Show Original" button (in parent container)
+        updateShowOriginalButton()
+    }
+    
+    /// Update or create "Show Original" button in parent container (bottomContainer)
+    private func updateShowOriginalButton() {
+        guard let parentView = superview else {
+            return
+        }
+        
+        let shouldShow = shouldShowOriginalButton()
+        
+        if shouldShow {
+            // Create or show button
+            if buttonContainer == nil {
+                // Create button container
+                let container = UIView()
+                container.isUserInteractionEnabled = true
+                parentView.addSubview(container)
+                
+                let button = UIButton(type: .system)
+                button.setTitle(TUISwift.timCommonLocalizableString("ShowOriginalText"), for: .normal)
+                button.titleLabel?.font = UIFont.systemFont(ofSize: 13)
+                button.setTitleColor(TUISwift.tuiTranslationDynamicColor("translation_view_button_text_color", defaultColor: "#147AFF"), for: .normal)
+                button.contentHorizontalAlignment = cellData?.direction == .incoming ? .left : .right
+                button.isUserInteractionEnabled = true
+                button.addTarget(self, action: #selector(onShowOriginalButtonTapped), for: .touchUpInside)
+                
+                container.addSubview(button)
+                
+                button.snp.makeConstraints { make in
+                    make.edges.equalToSuperview().inset(UIEdgeInsets(top: 0, left: 10, bottom: 0, right: 10))
+                }
+                
+                buttonContainer = container
+            }
+            
+            // Layout button container below translation view
+            if let buttonContainer = buttonContainer {
+                buttonContainer.isHidden = false
+                buttonContainer.isUserInteractionEnabled = true
+                
+                // Ensure parent view has user interaction enabled
+                parentView.isUserInteractionEnabled = true
+                
+                buttonContainer.snp.remakeConstraints { make in
+                    make.top.equalTo(self.snp.bottom).offset(2)
+                    if cellData?.direction == .incoming {
+                        make.leading.equalTo(self)
+                    } else {
+                        make.trailing.equalTo(self)
+                    }
+                    make.width.equalTo(self)
+                    make.height.equalTo(24)
+                }
+                
+                // Bring button to front
+                parentView.bringSubviewToFront(buttonContainer)
+                
+                // Force layout update
+                parentView.setNeedsLayout()
+                parentView.layoutIfNeeded()
+            }
+        } else {
+            // Hide button
+            buttonContainer?.isHidden = true
+        }
     }
     
     func startLoading() {
@@ -288,12 +447,47 @@ class TUITranslationView: UIView {
     }
     
     private func onHide(_ sender: Any?) {
-        cellData?.bottomContainerSize = .zero
+        // Clear visibility state in localCustomData
         if let innerMessage = cellData?.innerMessage {
+            TUITranslationDataProvider.clearVisibilityState(innerMessage)
             TUITranslationDataProvider.saveTranslationResult(innerMessage, text: "", status: .hidden)
         }
+        
+        // Remove button container
+        buttonContainer?.removeFromSuperview()
+        buttonContainer = nil
+        
+        cellData?.bottomContainerSize = .zero
         removeFromSuperview()
         notifyTranslationViewHidden()
+    }
+    
+    @objc func onShowOriginalButtonTapped() {
+        guard let message = cellData?.innerMessage else {
+            return
+        }
+        
+        // Mark that user manually requested to show original text (save to localCustomData)
+        TUITranslationDataProvider.setUserRequestedShowOriginal(true, for: message)
+        
+        // Show original text (enable bilingual mode for this message)
+        TUITranslationDataProvider.setShouldHideOriginalText(false, for: message)
+        
+        // Remove button container
+        buttonContainer?.removeFromSuperview()
+        buttonContainer = nil
+        
+        // Recalculate size without button (no more "Show Original" button)
+        let translationSize = calcSize(of: .shown)
+        cellData?.bottomContainerSize = translationSize
+        mm_top(0).mm_left(0).mm_width(translationSize.width).mm_height(translationSize.height)
+        
+        setNeedsUpdateConstraints()
+        updateConstraintsIfNeeded()
+        layoutIfNeeded()
+        
+        // Notify to refresh ONLY this cell (not other messages)
+        notifyHeightCacheNeedsInvalidation()
     }
     
     // MARK: - Notify
@@ -319,5 +513,20 @@ class TUITranslationView: UIView {
             self.updateConstraintsIfNeeded()
             self.layoutIfNeeded()
         }
+    }
+    
+    /// Notify to invalidate height cache and reload the cell completely
+    private func notifyHeightCacheNeedsInvalidation() {
+        guard let msgID = cellData?.innerMessage?.msgID else {
+            return
+        }
+        
+        // First notify about data change (will trigger height cache invalidation)
+        let param: [String: Any] = [
+            "TUICore_TUIPluginNotify_DidChangePluginViewSubKey_Data": cellData as Any,
+            "TUICore_TUIPluginNotify_DidChangePluginViewSubKey_VC": self,
+            "invalidateHeightCache": true  // Custom flag to indicate cache invalidation needed
+        ]
+        TUICore.notifyEvent("TUICore_TUIPluginNotify", subKey: "TUICore_TUIPluginNotify_DidChangePluginViewSubKey", object: nil, param: param)
     }
 }

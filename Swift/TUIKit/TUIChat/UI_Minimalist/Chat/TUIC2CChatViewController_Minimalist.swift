@@ -1,5 +1,6 @@
 import ImSDK_Plus
 import TIMCommon
+import TUICore
 import UIKit
 
 public class TUIC2CChatViewController_Minimalist: TUIBaseChatViewController_Minimalist {
@@ -12,6 +13,37 @@ public class TUIC2CChatViewController_Minimalist: TUIBaseChatViewController_Mini
     override public func viewDidLoad() {
         super.viewDidLoad()
         sendTypingBaseCondationInVC = false
+
+        if let userID = conversationData?.userID {
+            let param: [String: Any] = ["TUICore_TUIChatNotify_ChatVC_ViewDidLoadSubKey_UserID": userID]
+            TUICore.notifyEvent("TUICore_TUIChatNotify",
+                                subKey: "TUICore_TUIChatNotify_ChatVC_ViewDidLoadSubKey",
+                                object: nil,
+                                param: param)
+        }
+    }
+
+    override public func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+
+        // Notify plugins about chat view will appear (for restoring state after returning from sub-pages)
+        if let userID = conversationData?.userID {
+            let param: [String: Any] = ["TUICore_TUIChatNotify_ChatVC_ViewWillAppearSubKey_UserID": userID]
+            TUICore.notifyEvent("TUICore_TUIChatNotify",
+                                subKey: "TUICore_TUIChatNotify_ChatVC_ViewWillAppearSubKey",
+                                object: nil,
+                                param: param)
+        }
+    }
+
+    override public func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+
+        // Notify plugins about chat view will disappear
+        TUICore.notifyEvent("TUICore_TUIChatNotify",
+                            subKey: "TUICore_TUIChatNotify_ChatVC_ViewWillDisappearSubKey",
+                            object: nil,
+                            param: nil)
     }
 
     // Override Methods

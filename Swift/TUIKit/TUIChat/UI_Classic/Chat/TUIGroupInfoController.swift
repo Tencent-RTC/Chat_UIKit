@@ -2,7 +2,7 @@ import TIMCommon
 import TUICore
 import UIKit
 
-class TUIGroupInfoController: UITableViewController, TUIModifyViewDelegate, TUIProfileCardDelegate, TUIGroupInfoDataProviderDelegate {
+class TUIGroupInfoController: UITableViewController, TUIModifyViewDelegate, TUIProfileCardDelegate, TUIGroupInfoDataProviderDelegate, TUINotificationProtocol {
     var groupId: String?
     private var dataProvider: TUIGroupInfoDataProvider!
     private var titleView: TUINaviBarIndicatorView!
@@ -11,6 +11,7 @@ class TUIGroupInfoController: UITableViewController, TUIModifyViewDelegate, TUIP
 
     deinit {
         dataListObservation?.invalidate()
+        NotificationCenter.default.removeObserver(self)
     }
 
     override func viewDidLoad() {
@@ -24,6 +25,13 @@ class TUIGroupInfoController: UITableViewController, TUIModifyViewDelegate, TUIP
             guard let self else { return }
             self.tableView.reloadData()
         }
+        
+        // Register unified voice message settings reload notification
+        TUICore.registerEvent(
+            "TUICore_TUIVoiceMessageNotify",
+            subKey: "TUICore_TUIVoiceMessageNotify_ReloadDataSubKey",
+            object: self
+        )
 
         titleView = TUINaviBarIndicatorView()
         navigationItem.titleView = titleView
@@ -418,6 +426,27 @@ class TUIGroupInfoController: UITableViewController, TUIModifyViewDelegate, TUIP
         }
         navigationController?.pushViewController(vc, animated: true)
     }
+    
+    @objc func didSelectExtensionSwitch(_ cell: TUICommonSwitchCell) {
+        guard let extensionInfo = cell.switchData?.tui_extValueObj as? TUIExtensionInfo,
+              let onClicked = extensionInfo.onClicked
+        else { return }
+        
+        var param: [String: Any] = [:]
+        param["isOn"] = cell.switcher.isOn
+        onClicked(param)
+    }
+    
+    @objc func didSelectVoiceSetting(_ cell: TUICommonTextCell) {
+        guard let extensionInfo = cell.data?.tui_extValueObj as? TUIExtensionInfo,
+              let onClicked = extensionInfo.onClicked
+        else { return }
+        
+        onClicked([
+            "viewController": self,
+            "pushVC": navigationController as Any
+        ])
+    }
 
     // MARK: TUIProfileCardDelegate
 
@@ -451,6 +480,15 @@ class TUIGroupInfoController: UITableViewController, TUIModifyViewDelegate, TUIP
             dataProvider.setGroupMemberNameCard(content)
         default:
             break
+        }
+    }
+    
+    // MARK: - TUINotificationProtocol
+    
+    func onNotifyEvent(_ key: String, subKey: String, object anObject: Any?, param: [AnyHashable: Any]?) {
+        if key == "TUICore_TUIVoiceMessageNotify",
+           subKey == "TUICore_TUIVoiceMessageNotify_ReloadDataSubKey" {
+            dataProvider.loadData()
         }
     }
 }

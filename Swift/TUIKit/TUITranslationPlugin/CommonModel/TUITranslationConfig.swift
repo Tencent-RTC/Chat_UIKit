@@ -25,9 +25,47 @@ class TUITranslationConfig: NSObject {
      */
     private(set) var targetLanguageName: String?
     
+    /**
+     * Auto translate received messages.
+     */
+    var autoTranslateEnabled: Bool = false {
+        didSet {
+            if oldValue == autoTranslateEnabled { return }
+            UserDefaults.standard.set(autoTranslateEnabled, forKey: kAutoTranslateEnabled)
+            UserDefaults.standard.synchronize()
+        }
+    }
+    
+    /**
+     * Show bilingual mode (original text + translation).
+     * When true: show both original and translated text
+     * When false: hide original text and show only translation
+     */
+    var showBilingualEnabled: Bool = true {
+        didSet {
+            if oldValue == showBilingualEnabled { return }
+            UserDefaults.standard.set(showBilingualEnabled, forKey: kShowBilingualEnabled)
+            UserDefaults.standard.synchronize()
+        }
+    }
+    
     override private init() {
         super.init()
         loadSavedLanguage()
+        loadAutoTranslateSetting()
+        loadShowBilingualSetting()
+    }
+    
+    private func loadAutoTranslateSetting() {
+        autoTranslateEnabled = UserDefaults.standard.bool(forKey: kAutoTranslateEnabled)
+    }
+    
+    private func loadShowBilingualSetting() {
+        if UserDefaults.standard.object(forKey: kShowBilingualEnabled) != nil {
+            showBilingualEnabled = UserDefaults.standard.bool(forKey: kShowBilingualEnabled)
+        } else {
+            showBilingualEnabled = true
+        }
     }
     
     private func loadSavedLanguage() {
@@ -71,4 +109,6 @@ class TUITranslationConfig: NSObject {
     }
     
     private let kTransaltionTargetLanguageCode = "translation_target_language_code"
+    private let kAutoTranslateEnabled = "translation_auto_translate_enabled"
+    private let kShowBilingualEnabled = "translation_show_bilingual_enabled"
 }

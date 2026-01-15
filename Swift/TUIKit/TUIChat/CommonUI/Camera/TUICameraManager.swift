@@ -11,13 +11,14 @@ class TUICameraManager: NSObject {
         session.removeInput(oldInput)
         if session.canAddInput(newInput) {
             session.addInput(newInput)
-            session.commitConfiguration()
-            return newInput
         } else {
-            session.addInput(oldInput)
-            session.commitConfiguration()
-            return oldInput
+            if session.canAddInput(oldInput) {
+                session.addInput(oldInput)
+            }
         }
+        session.commitConfiguration()
+        
+        return session.inputs.contains(newInput) ? newInput : oldInput
     }
     
     // MARK: - Zoom

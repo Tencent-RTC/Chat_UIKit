@@ -13,7 +13,7 @@ extension TUIMessageDataProviderDataSource {
     static func onGetCustomMessageCellDataClass(businessID: String) -> TUIMessageCellDataDelegate.Type? { return nil }
 }
 
-class TUIMessageDataProvider: TUIMessageBaseDataProvider {
+public class TUIMessageDataProvider: TUIMessageBaseDataProvider {
     static var gDataSourceClass: TUIMessageDataProviderDataSource.Type? = nil
 
     deinit {

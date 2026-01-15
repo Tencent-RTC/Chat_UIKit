@@ -2,7 +2,7 @@ import TIMCommon
 import TUICore
 import UIKit
 
-class TUIGroupInfoController_Minimalist: UIViewController, TUIModifyViewDelegate, TUIProfileCardDelegate, TUIGroupInfoDataProviderDelegate_Minimalist, UITableViewDelegate, UITableViewDataSource {
+class TUIGroupInfoController_Minimalist: UIViewController, TUIModifyViewDelegate, TUIProfileCardDelegate, TUIGroupInfoDataProviderDelegate_Minimalist, UITableViewDelegate, UITableViewDataSource, TUINotificationProtocol {
     var tableView: UITableView!
     var groupId: String?
     var dataProvider: TUIGroupInfoDataProvider_Minimalist!
@@ -11,6 +11,7 @@ class TUIGroupInfoController_Minimalist: UIViewController, TUIModifyViewDelegate
 
     deinit {
         dataListObservation?.invalidate()
+        NotificationCenter.default.removeObserver(self)
     }
 
     override func viewDidLoad() {
@@ -21,6 +22,13 @@ class TUIGroupInfoController_Minimalist: UIViewController, TUIModifyViewDelegate
 
         setupViews()
         dataProvider.loadData()
+        
+        // Register unified voice message settings reload notification
+        TUICore.registerEvent(
+            "TUICore_TUIVoiceMessageNotify",
+            subKey: "TUICore_TUIVoiceMessageNotify_ReloadDataSubKey",
+            object: self
+        )
 
         dataListObservation = dataProvider.observe(\.dataList, options: [.new, .initial]) { [weak self] _, _ in
             guard let self else { return }
@@ -536,6 +544,17 @@ class TUIGroupInfoController_Minimalist: UIViewController, TUIModifyViewDelegate
     @objc func didAddMembers() {
         TUICore.notifyEvent("TUICore_TUIContactNotify", subKey: "TUICore_TUIContactNotify_OnAddMemebersClickSubKey", object: self, param: nil)
     }
+    
+    @objc func didSelectVoiceSetting(_ cell: TUICommonTextCell) {
+        guard let extensionInfo = cell.data?.tui_extValueObj as? TUIExtensionInfo,
+              let onClicked = extensionInfo.onClicked
+        else { return }
+        
+        onClicked([
+            "viewController": self,
+            "pushVC": navigationController as Any
+        ])
+    }
 
     // MARK: - TUIModifyViewDelegate
 
@@ -548,6 +567,15 @@ class TUIGroupInfoController_Minimalist: UIViewController, TUIModifyViewDelegate
             dataProvider.setGroupNotification(content)
         } else if modifyView.tag == 2 {
             dataProvider.setGroupMemberNameCard(content)
+        }
+    }
+    
+    // MARK: - TUINotificationProtocol
+    
+    func onNotifyEvent(_ key: String, subKey: String, object anObject: Any?, param: [AnyHashable: Any]?) {
+        if key == "TUICore_TUIVoiceMessageNotify",
+           subKey == "TUICore_TUIVoiceMessageNotify_ReloadDataSubKey" {
+            dataProvider.loadData()
         }
     }
 }

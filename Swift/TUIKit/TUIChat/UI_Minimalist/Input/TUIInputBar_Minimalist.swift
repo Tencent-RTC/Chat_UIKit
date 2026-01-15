@@ -3,13 +3,6 @@ import TUICore
 import UIKit
 import SnapKit
 
-private enum TUIRecordStatus: Int {
-    case initial
-    case record
-    case delete
-    case cancel
-}
-
 protocol TUIInputBarDelegate_Minimalist: AnyObject {
     func inputBarDidTouchFace(_ textView: TUIInputBar_Minimalist)
     func inputBarDidTouchMore(_ textView: TUIInputBar_Minimalist)
@@ -50,15 +43,7 @@ class TUIInputBar_Minimalist: UIView, UITextViewDelegate, TUIAudioRecorderDelega
     var inputTextView: TUIResponderTextView_Minimalist
     var faceButton: UIButton
     var moreButton: UIButton
-    var recordView: UIView
-    var recordDeleteView: UIImageView
-    var recordBackgroudView: UIView
-    var recordTipsView: UIView
-    var recordTipsLabel: UILabel
-    var recordTimeLabel: UILabel
-    var recordAnimateViews: [UIImageView]
-    var recordAnimateCoverView: UIImageView
-    var recordAnimateCoverViewFrame: CGRect?
+
     var inputBarTextChanged: ((UITextView) -> Void)?
     var recordStartTime: Date?
     var recordTimer: Timer?
@@ -66,6 +51,10 @@ class TUIInputBar_Minimalist: UIView, UITextViewDelegate, TUIAudioRecorderDelega
     var sendTypingStatusTimer: Timer?
     var allowSendTypingStatusByChangeWord: Bool = true
     weak var delegate: TUIInputBarDelegate_Minimalist?
+    
+    // Voice recording related properties
+    private var currentRecordingPath: String?
+    private var recordingDuration: Int = 0
     
     // MARK: - AI Conversation Properties
     private var aiStyleEnabled: Bool = false
@@ -89,6 +78,20 @@ class TUIInputBar_Minimalist: UIView, UITextViewDelegate, TUIAudioRecorderDelega
         return recorder
     }()
 
+    private var _recordView: TUIRecordView?
+    var recordView: TUIRecordView? {
+        get {
+            if _recordView == nil {
+                _recordView = TUIRecordView()
+                _recordView?.frame = frame
+            }
+            return _recordView!
+        }
+        set {
+            _recordView = newValue
+        }
+    }
+
     let normalFont: UIFont = .systemFont(ofSize: 16)
     let normalColor: UIColor = TUISwift.tuiChatDynamicColor("chat_input_text_color", defaultColor: "#000000")
 
@@ -102,14 +105,7 @@ class TUIInputBar_Minimalist: UIView, UITextViewDelegate, TUIAudioRecorderDelega
         faceButton = UIButton()
         micButton = UIButton()
         cameraButton = UIButton()
-        recordView = UIView()
-        recordDeleteView = UIImageView()
-        recordBackgroudView = UIView()
-        recordTimeLabel = UILabel()
-        recordAnimateViews = [UIImageView]()
-        recordAnimateCoverView = UIImageView()
-        recordTipsView = UIView()
-        recordTipsLabel = UILabel()
+
         aiInterruptButton = UIButton(type: .custom)
         aiSendButton = UIButton(type: .custom)
 
@@ -170,6 +166,8 @@ class TUIInputBar_Minimalist: UIView, UITextViewDelegate, TUIAudioRecorderDelega
         micButton.addTarget(self, action: #selector(recordBtnCancel(_:)), for: [.touchUpOutside, .touchCancel])
         micButton.addTarget(self, action: #selector(recordBtnDragExit(_:)), for: .touchDragExit)
         micButton.addTarget(self, action: #selector(recordBtnDragEnter(_:)), for: .touchDragEnter)
+        micButton.addTarget(self, action: #selector(recordBtnDrag(_:event:)), for: .touchDragInside)
+        micButton.addTarget(self, action: #selector(recordBtnDrag(_:event:)), for: .touchDragOutside)
         micButton.setImage(getImageFromCache("ToolViewInputVoice"), for: .normal)
         addSubview(micButton)
 
@@ -177,78 +175,6 @@ class TUIInputBar_Minimalist: UIView, UITextViewDelegate, TUIAudioRecorderDelega
         cameraButton.setImage(getImageFromCache("ToolViewInputCamera"), for: .normal)
         cameraButton.setImage(getImageFromCache("ToolViewInputCamera"), for: .highlighted)
         addSubview(cameraButton)
-
-        initRecordView()
-    }
-
-    func initRecordView() {
-        recordView.backgroundColor = TUISwift.rgba(255, g: 255, b: 255, a: 1)
-        recordView.isHidden = true
-        addSubview(recordView)
-
-        recordView.addSubview(recordDeleteView)
-
-        recordView.addSubview(recordBackgroudView)
-
-        recordTimeLabel.textColor = .white
-        recordTimeLabel.font = UIFont.systemFont(ofSize: 14)
-        recordView.addSubview(recordTimeLabel)
-
-        for _ in 0..<6 {
-            let recordAnimateView = UIImageView()
-            recordAnimateView.image = getImageFromCache("voice_record_animation")
-            recordView.addSubview(recordAnimateView)
-            recordAnimateViews.append(recordAnimateView)
-        }
-
-        recordView.addSubview(recordAnimateCoverView)
-
-        recordTipsView.backgroundColor = .white
-        recordTipsView.frame = CGRect(x: 0, y: -56, width: TUISwift.screen_Width(), height: 56)
-        recordView.addSubview(recordTipsView)
-
-        recordTipsLabel.textColor = TUISwift.rgba(102, g: 102, b: 102, a: 1)
-        recordTipsLabel.textColor = .black
-        recordTipsLabel.text = TUISwift.timCommonLocalizableString("TUIKitInputRecordTipsTitle")
-        recordTipsLabel.textAlignment = .center
-        recordTipsLabel.font = UIFont.systemFont(ofSize: 14)
-        recordTipsLabel.frame = CGRect(x: 0, y: 10, width: TUISwift.screen_Width(), height: 22)
-        recordTipsView.addSubview(recordTipsLabel)
-
-        setRecordStatus(.initial)
-    }
-
-    private func setRecordStatus(_ status: TUIRecordStatus) {
-        switch status {
-        case .initial, .record, .cancel:
-            recordDeleteView.frame = CGRect(x: TUISwift.kScale390(16), y: recordDeleteView.frame.minY, width: 24, height: 24)
-            if TUISwift.isRTL() {
-                recordDeleteView.resetFrameToFitRTL()
-            }
-            recordDeleteView.image = getImageFromCache("voice_record_delete")
-            recordBackgroudView.backgroundColor = TUISwift.rgba(20, g: 122, b: 255, a: 1)
-            recordAnimateCoverView.backgroundColor = recordBackgroudView.backgroundColor
-            recordAnimateCoverView.frame = recordAnimateCoverViewFrame ?? CGRect.zero
-            recordTimeLabel.text = "0:00"
-            recordTipsLabel.text = TUISwift.timCommonLocalizableString("TUIKitInputRecordTipsTitle")
-
-            if status == .record {
-                recordView.isHidden = false
-            } else {
-                recordView.isHidden = true
-            }
-        case .delete:
-            recordDeleteView.frame = CGRect(x: TUISwift.kScale390(16), y: recordDeleteView.frame.minY, width: 26, height: 30)
-            if TUISwift.isRTL() {
-                recordDeleteView.resetFrameToFitRTL()
-            }
-            recordDeleteView.image = getImageFromCache("voice_record_delete_ready")
-            recordBackgroudView.backgroundColor = TUISwift.rgba(255, g: 88, b: 76, a: 1)
-            recordAnimateCoverView.backgroundColor = recordBackgroudView.backgroundColor
-            recordTipsLabel.text = TUISwift.timCommonLocalizableString("TUIKitInputRecordCancelTipsTitle")
-
-            recordView.isHidden = false
-        }
     }
 
     func defaultLayout() {
@@ -273,30 +199,10 @@ class TUIInputBar_Minimalist: UIView, UITextViewDelegate, TUIAudioRecorderDelega
         keyboardButton.frame = faceButton.frame
         inputTextView.frame = CGRect(x: TUISwift.kScale390(56), y: 7, width: TUISwift.screen_Width() - TUISwift.kScale390(152), height: 36)
 
-        recordView.frame = CGRect(x: 0, y: inputTextView.frame.minY, width: frame.width, height: inputTextView.frame.height)
-        recordDeleteView.frame = CGRect(x: TUISwift.kScale390(16), y: 4, width: iconSize, height: iconSize)
-        recordBackgroudView.frame = CGRect(x: TUISwift.kScale390(54), y: 0, width: frame.width - TUISwift.kScale390(70), height: recordView.frame.height)
-        recordTimeLabel.frame = CGRect(x: TUISwift.kScale390(70), y: TUISwift.kScale390(7), width: 32, height: 22)
-
-        let animationStartX: CGFloat = TUISwift.kScale390(112)
-        let animationY: CGFloat = 8
-        let animationSize: CGFloat = 20
-        let animationSpace: CGFloat = TUISwift.kScale390(8)
-        var animationCoverWidth: CGFloat = 0
-        for i in 0..<recordAnimateViews.count {
-            let animationView = recordAnimateViews[i]
-            animationView.frame = CGRect(x: animationStartX + (animationSize + animationSpace) * CGFloat(i), y: animationY, width: animationSize, height: animationSize)
-            animationCoverWidth = (animationSize + animationSpace) * CGFloat(i + 1)
-        }
-        recordAnimateCoverViewFrame = CGRect(x: animationStartX, y: animationY, width: animationCoverWidth, height: animationSize)
-        recordAnimateCoverView.frame = recordAnimateCoverViewFrame ?? CGRect.zero
         applyBorderTheme()
 
         if TUISwift.isRTL() {
             for subview in subviews {
-                subview.resetFrameToFitRTL()
-            }
-            for subview in recordView.subviews {
                 subview.resetFrameToFitRTL()
             }
         }
@@ -319,9 +225,6 @@ class TUIInputBar_Minimalist: UIView, UITextViewDelegate, TUIAudioRecorderDelega
     }
 
     func applyBorderTheme() {
-        recordBackgroudView.layer.masksToBounds = true
-        recordBackgroudView.layer.cornerRadius = recordBackgroudView.frame.height / 2.0
-
         inputTextView.layer.masksToBounds = true
         inputTextView.layer.cornerRadius = inputTextView.frame.height / 2.0
         inputTextView.layer.borderWidth = 0.5
@@ -343,7 +246,6 @@ class TUIInputBar_Minimalist: UIView, UITextViewDelegate, TUIAudioRecorderDelega
         keyboardButton.isHidden = true
         inputTextView.isHidden = false
         faceButton.isHidden = false
-        setRecordStatus(.cancel)
         delegate?.inputBarDidTouchCamera(self)
     }
 
@@ -352,7 +254,6 @@ class TUIInputBar_Minimalist: UIView, UITextViewDelegate, TUIAudioRecorderDelega
         keyboardButton.isHidden = true
         inputTextView.isHidden = false
         faceButton.isHidden = false
-        setRecordStatus(.cancel)
         layoutButton(inputTextView.frame.height + CGFloat(2 * TTextView_Margin))
         delegate?.inputBarDidTouchKeyboard(self)
     }
@@ -362,7 +263,6 @@ class TUIInputBar_Minimalist: UIView, UITextViewDelegate, TUIAudioRecorderDelega
         faceButton.isHidden = true
         keyboardButton.isHidden = false
         inputTextView.isHidden = false
-        setRecordStatus(.cancel)
         delegate?.inputBarDidTouchFace(self)
         keyboardButton.frame = faceButton.frame
     }
@@ -372,34 +272,92 @@ class TUIInputBar_Minimalist: UIView, UITextViewDelegate, TUIAudioRecorderDelega
     }
 
     @objc func recordBtnDown(_ sender: UIButton) {
+        // Dismiss keyboard first
+        inputTextView.resignFirstResponder()
         recorder.record()
     }
 
     @objc func recordBtnUp(_ sender: UIButton) {
-        let interval = Date().timeIntervalSince(recordStartTime ?? Date())
-        if interval < 1 {
-            recorder.cancel()
-        } else if interval > 60 {
-            recorder.cancel()
-        } else {
-            recorder.stop()
-            let path = recorder.recordedFilePath
-            delegate?.inputBarDidSendVoice(self, path: path)
-        }
-        setRecordStatus(.cancel)
+        handleRecordingEnd()
     }
 
     @objc func recordBtnCancel(_ gesture: UIGestureRecognizer) {
-        setRecordStatus(.cancel)
-        recorder.cancel()
+        handleRecordingEnd()
+    }
+    
+    // Handle recording end (called by both touchUpInside and touchCancel)
+    private func handleRecordingEnd() {
+        let interval = Date().timeIntervalSince(recordStartTime ?? Date())
+        let currentZone = recordView?.currentZone ?? .normal
+        
+        // Check recording duration
+        if interval < 1 {
+            recorder.cancel()
+            // Show toast immediately
+            recordView?.showCustomToast(TUISwift.timCommonLocalizableString("TUIKitInputRecordTimeshort"))
+            // Hide record view immediately with animation
+            recordView?.hideWithAnimation {
+                self.recordView?.removeFromSuperview()
+                self.recordView = nil
+            }
+            return
+        }
+        
+        if interval > min(59, TUIChatConfig.shared.maxAudioRecordDuration) {
+            recorder.cancel()
+            // Show toast immediately
+            recordView?.showCustomToast(TUISwift.timCommonLocalizableString("TUIKitInputRecordTimeLong"))
+            // Hide record view immediately with animation
+            recordView?.hideWithAnimation {
+                self.recordView?.removeFromSuperview()
+                self.recordView = nil
+            }
+            return
+        }
+        
+        // Stop recording
+        recorder.stop()
+        currentRecordingPath = recorder.recordedFilePath
+        recordingDuration = Int(interval)
+        
+        // Handle based on zone
+        switch currentZone {
+        case .cancel:
+            // Cancel recording - hide view
+            if _recordView != nil {
+                recordView?.hideWithAnimation {
+                    self.recordView?.removeFromSuperview()
+                    self.recordView = nil
+                }
+            }
+            handleCancelRecording()
+            
+        case .normal:
+            // Send voice directly - hide view
+            if _recordView != nil {
+                recordView?.hideWithAnimation {
+                    self.recordView?.removeFromSuperview()
+                    self.recordView = nil
+                }
+            }
+            sendVoiceMessageDirectly()
+            
+        case .toText:
+            // Convert to text - DON'T hide view, enter text processing state
+            startVoiceToTextConversion()
+        }
     }
 
     @objc func recordBtnDragExit(_ sender: UIButton) {
-        setRecordStatus(.delete)
     }
 
     @objc func recordBtnDragEnter(_ sender: UIButton) {
-        setRecordStatus(.record)
+    }
+    
+    @objc func recordBtnDrag(_ sender: UIButton, event: UIEvent) {
+        guard let touch = event.allTouches?.first else { return }
+        let touchPoint = touch.location(in: window)
+        recordView?.updateZone(touchPoint: touchPoint)
     }
 
     // MARK: - UITextViewDelegate
@@ -569,8 +527,23 @@ class TUIInputBar_Minimalist: UIView, UITextViewDelegate, TUIAudioRecorderDelega
             }
             return
         }
-        setRecordStatus(.record)
+        updateViewsToRecordingStatus()
+    }
+    
+    func updateViewsToRecordingStatus() {
+        guard let window = window, let recordView = recordView else { return }
+
+        window.addSubview(recordView)
+        recordView.snp.remakeConstraints { make in
+            make.center.equalTo(window)
+            make.width.height.equalTo(window)
+        }
+        
+        // Show with fade-in animation
+        recordView.showWithAnimation()
+
         recordStartTime = Date()
+        recordView.setStatus(.recording)
         showHapticFeedback()
     }
 
@@ -607,21 +580,22 @@ class TUIInputBar_Minimalist: UIView, UITextViewDelegate, TUIAudioRecorderDelega
     }
 
     func didRecordTimeChanged(_ recorder: TUIAudioRecorder, _ time: TimeInterval) {
-        let maxDuration = min(59.7, TUIChatConfig.shared.maxAudioRecordDuration)
-        let seconds = Int(maxDuration - time)
-        recordTimeLabel.text = String(format: "%d:%.2d", Int(time) / 60, Int(time) % 60 + 1)
-        let width = recordAnimateCoverViewFrame?.size.width ?? 0
-        let interval_ms = Int(time * 1000)
-        let runloop_ms = 5 * 1000
-        let offset_x = width * CGFloat(interval_ms % runloop_ms) / CGFloat(runloop_ms)
-        recordAnimateCoverView.frame = CGRect(x: (recordAnimateCoverViewFrame?.origin.x ?? 0) + offset_x,
-                                              y: recordAnimateCoverViewFrame?.origin.y ?? 0,
-                                              width: width - offset_x,
-                                              height: recordAnimateCoverViewFrame?.size.height ?? 0)
-        if time > maxDuration {
+        let uiMaxDuration = min(59, TUIChatConfig.shared.maxAudioRecordDuration)
+        let realMaxDuration = uiMaxDuration + 0.7
+        
+        // Update recording time and countdown warning in recordView
+        recordView?.updateRecordingTime(time, maxDuration: uiMaxDuration)
+
+        if time > realMaxDuration {
             recorder.stop()
-            setRecordStatus(.cancel)
             let path = recorder.recordedFilePath
+            recordView?.setStatus(.tooLong)
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+                self?.recordView?.removeFromSuperview()
+                self?.recordView = nil
+            }
+
             delegate?.inputBarDidSendVoice(self, path: path)
         }
     }
@@ -815,5 +789,88 @@ class TUIInputBar_Minimalist: UIView, UITextViewDelegate, TUIAudioRecorderDelega
         delegate?.inputBarDidTouchAIInterrupt(self)
     }
     
-
+    // MARK: - Voice to Text Methods
+    
+    private func handleCancelRecording() {
+        currentRecordingPath = nil
+        recorder.cancel()
+    }
+    
+    private func sendVoiceMessageDirectly() {
+        guard let path = currentRecordingPath else { return }
+        delegate?.inputBarDidSendVoice(self, path: path)
+        currentRecordingPath = nil
+    }
+    
+    private func startVoiceToTextConversion() {
+        guard let recordPath = currentRecordingPath else { return }
+        
+        // Don't hide recordView, instead enter text processing state
+        recordView?.enterTextProcessingState()
+        
+        // Setup callbacks for the three buttons
+        recordView?.onSendVoice = { [weak self] in
+            guard let self = self else { return }
+            // Send original voice
+            self.recordView?.hideWithAnimation {
+                self.recordView?.removeFromSuperview()
+                self.recordView = nil
+            }
+            self.sendVoiceMessageDirectly()
+        }
+        
+        recordView?.onSendText = { [weak self] in
+            guard let self = self else { return }
+            // Send converted text
+            let text = self.recordView?.getConvertedText() ?? ""
+            self.recordView?.hideWithAnimation {
+                self.recordView?.removeFromSuperview()
+                self.recordView = nil
+            }
+            // Send text message
+            if !text.isEmpty {
+                self.delegate?.inputBarDidSendText(self, text: text)
+            }
+        }
+        
+        recordView?.onCancelSend = { [weak self] in
+            guard let self = self else { return }
+            // Cancel - just hide and cleanup
+            self.recordView?.hideWithAnimation {
+                self.recordView?.removeFromSuperview()
+                self.recordView = nil
+            }
+            self.currentRecordingPath = nil
+        }
+        
+        // Use TUIAIMediaProcessManager for voice to text conversion
+        TUIAIMediaProcessManager.shared.processVoiceToText(
+            filePath: recordPath,
+            progressCallback: { result in
+                switch result {
+                case .uploadSuccess(let url):
+                    print(" Upload successful, URL: \(url)")
+                case .voiceToTextSuccess(let text):
+                    print(" Voice to text successful: \(text)")
+                case .translationSuccess(let text):
+                    print(" Translation successful: \(text)")
+                case .failure(let code, let message):
+                    print(" Process failed: code=\(code), message=\(message ?? "unknown")")
+                }
+            },
+            completion: { [weak self] result in
+                guard let self = self else { return }
+                DispatchQueue.main.async {
+                    switch result {
+                    case .success(let text):
+                        self.recordView?.setConvertLocalVoiceToTextState(.success, text: text)
+                        print(" Voice to text successful: \(text)")
+                    case .failure(let error):
+                        self.recordView?.setConvertLocalVoiceToTextState(.failure, error: error)
+                        print(" Voice to text failed: \(error.localizedDescription)")
+                    }
+                }
+            }
+        )
+    }
 }

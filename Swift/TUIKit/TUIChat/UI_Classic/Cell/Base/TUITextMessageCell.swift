@@ -3,6 +3,26 @@ import TIMCommon
 import TUICore
 import UIKit
 
+// Custom view that allows touch events to pass through to subviews even when they're outside bounds
+class TUIPassthroughView: UIView {
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        // First try the default hit test
+        if let hitView = super.hitTest(point, with: event), hitView != self {
+            return hitView
+        }
+        
+        // If point is outside bounds, check all subviews manually
+        for subview in subviews.reversed() {
+            let convertedPoint = subview.convert(point, from: self)
+            if let hitView = subview.hitTest(convertedPoint, with: event) {
+                return hitView
+            }
+        }
+        
+        return nil
+    }
+}
+
 public class TUITextMessageCell: TUIBubbleMessageCell, UITextViewDelegate, TUITextViewDelegate {
     public var textView: TUITextView!
     public var selectContent: String?
@@ -88,8 +108,15 @@ public class TUITextMessageCell: TUIBubbleMessageCell, UITextViewDelegate, TUITe
         textView.tuiTextViewDelegate = self
         bubbleView.addSubview(textView)
         
-        bottomContainer = UIView()
+        // Use custom view that allows touch events outside bounds
+        bottomContainer = TUIPassthroughView()
+        bottomContainer.isUserInteractionEnabled = true  // Enable user interaction for button clicks
         contentView.addSubview(bottomContainer)
+        
+        topContainer = TUIPassthroughView()
+        topContainer.isUserInteractionEnabled = true
+        topContainer.clipsToBounds = false
+        contentView.addSubview(topContainer)
         
         voiceReadPoint = UIImageView()
         voiceReadPoint.backgroundColor = .red
@@ -105,11 +132,29 @@ public class TUITextMessageCell: TUIBubbleMessageCell, UITextViewDelegate, TUITe
         for view in bottomContainer.subviews {
             view.removeFromSuperview()
         }
+        for view in topContainer.subviews {
+            view.removeFromSuperview()
+        }
+        textView.alpha = 1
+        textView.isHidden = false
+        bottomContainer.alpha = 1
+        topContainer.isHidden = true
     }
     
     override public func notifyBottomContainerReady(of cellData: TUIMessageCellData?) {
         let param: [String: Any] = ["TUICore_TUIChatExtension_BottomContainer_CellData": textData as Any]
         TUICore.raiseExtension("TUICore_TUIChatExtension_BottomContainer_ClassicExtensionID", parentView: bottomContainer, param: param)
+    }
+    
+    override public func notifyTopContainerReady(of cellData: TUIMessageCellData?) {
+        let param: [String: Any] = ["TUICore_TUIChatExtension_TopContainer_CellData": textData as Any]
+        let hasExtension = TUICore.raiseExtension("TUICore_TUIChatExtension_TopContainer_ClassicExtensionID", parentView: topContainer, param: param)
+        topContainer.isHidden = !hasExtension
+        
+        // If extension was added, layout topContainer
+        if hasExtension {
+            layoutTopContainer()
+        }
     }
     
     override open func fill(with data: TUICommonCellData) {
@@ -128,6 +173,12 @@ public class TUITextMessageCell: TUIBubbleMessageCell, UITextViewDelegate, TUITe
             textView.textColor = textColor
             textView.font = textFont
             
+            // Control text visibility based on translation plugin's state
+            // Read from localCustomData via TUICore service to avoid direct dependency
+            let shouldHide = TUITextMessageCell.getShouldHideOriginalText(for: data)
+            textView.isHidden = shouldHide
+            textView.alpha = shouldHide ? 0 : 1
+            
             setNeedsUpdateConstraints()
             updateConstraintsIfNeeded()
             layoutIfNeeded()
@@ -140,6 +191,19 @@ public class TUITextMessageCell: TUIBubbleMessageCell, UITextViewDelegate, TUITe
     
     override public func updateConstraints() {
         super.updateConstraints()
+        
+        // If topContainerInsetTop > 0, adjust container's top offset to move it down
+        // This prevents nameLabel from overlapping with topContainer
+        if let textData = textData, textData.topContainerInsetTop > 0 {
+            let cellLayout = textData.cellLayout
+            let baseOffset = cellLayout?.messageInsets.top ?? 0
+            let extraOffset = textData.topContainerInsetTop
+            
+            container.snp.updateConstraints { make in
+                make.top.equalTo(nameLabel.snp.bottom).offset(baseOffset + extraOffset)
+            }
+        }
+        
         textView.snp.remakeConstraints { make in
             make.leading.equalTo(bubbleView).offset(textData?.textOrigin.x ?? 0)
             make.top.equalTo(bubbleView).offset(textData?.textOrigin.y ?? 0)
@@ -161,7 +225,9 @@ public class TUITextMessageCell: TUIBubbleMessageCell, UITextViewDelegate, TUITe
                 make.bottom.equalTo(container).offset(-(messageData?.messageContainerAppendSize.height ?? 0))
             }
         }
+
         layoutBottomContainer()
+        layoutTopContainer()
     }
     
     func layoutBottomContainer() {
@@ -190,6 +256,66 @@ public class TUITextMessageCell: TUIBubbleMessageCell, UITextViewDelegate, TUITe
                 make.top.equalTo(topView.snp.bottom).priority(100)
                 make.size.equalTo(CGSize(width: messageModifyRepliesButton.frame.size.width + 10, height: 30))
             }
+        }
+    }
+    
+    func layoutTopContainer() {
+        guard !topContainer.isHidden else { return }
+        guard let textData = textData else { return }
+        
+        let topContainerSize = textData.topContainerSize
+        guard topContainerSize.width > 0 && topContainerSize.height > 0 else {
+            topContainer.isHidden = true
+            return
+        }
+        
+        // Check if original text is hidden (translation mode)
+        let shouldHide = TUITextMessageCell.getShouldHideOriginalText(for: textData)
+        
+        // Position topContainer at top-right corner of bubbleView or bottomContainer
+        topContainer.snp.remakeConstraints { make in
+            if shouldHide && !bottomContainer.isHidden {
+                // When original text is hidden, align with bottomContainer
+                make.trailing.equalTo(bottomContainer.snp.trailing)
+                make.centerY.equalTo(bottomContainer.snp.top)
+            } else {
+                // Normal mode: align with bubbleView
+                make.trailing.equalTo(bubbleView.snp.trailing)
+                make.centerY.equalTo(bubbleView.snp.top)
+            }
+            make.size.equalTo(topContainerSize)
+        }
+    }
+    
+    func animateOriginalTextVisibilityIfNeeded(animated: Bool) {
+        guard let textCellData = textData else { return }
+
+        let shouldShowBottomContainer = !CGSizeEqualToSize(textCellData.bottomContainerSize, .zero)
+
+        if !animated {
+            bottomContainer.isHidden = !shouldShowBottomContainer
+            bottomContainer.alpha = shouldShowBottomContainer ? 1 : 0
+            return
+        }
+
+        bottomContainer.layer.removeAllAnimations()
+
+        if shouldShowBottomContainer {
+            bottomContainer.isHidden = false
+            bottomContainer.alpha = 0
+
+            UIView.animate(withDuration: 0.25) {
+                self.bottomContainer.alpha = 1
+            }
+        } else {
+            bottomContainer.isHidden = false
+            bottomContainer.alpha = 1
+
+            UIView.animate(withDuration: 0.25, animations: {
+                self.bottomContainer.alpha = 0
+            }, completion: { _ in
+                self.bottomContainer.isHidden = true
+            })
         }
     }
     
@@ -248,17 +374,69 @@ public class TUITextMessageCell: TUIBubbleMessageCell, UITextViewDelegate, TUITe
     override public class func getEstimatedHeight(_ data: TUIMessageCellData) -> CGFloat {
         return 60.0
     }
+    
+    private class func getTopContainerInsetTop(for cellData: TUITextMessageCellData) -> CGFloat {
+        let param: [String: Any] = ["cellData": cellData]
+        let result = TUICore.callService(
+            "TUICore_TUITextToVoiceService",
+            method: "TUICore_TUITextToVoiceService_CalculateTopContainerInsetTopMethod",
+            param: param
+        )
+        if let insetTop = result as? NSNumber {
+            return CGFloat(insetTop.doubleValue)
+        }
+        return 0
+    }
         
     override public class func getHeight(_ data: TUIMessageCellData, withWidth width: CGFloat) -> CGFloat {
         guard let textCellData = data as? TUITextMessageCellData else {
             assertionFailure("data must be kind of TUITextMessageCellData")
             return CGFloat.zero
         }
-            
-        var height = super.getHeight(textCellData, withWidth: width)
+        
+        // Calculate topContainerInsetTop via plugin service
+        let topContainerInsetTop = getTopContainerInsetTop(for: textCellData)
+        textCellData.topContainerInsetTop = topContainerInsetTop
+         
+        let shouldHide = getShouldHideOriginalText(for: textCellData)
+        
+        if !shouldHide {
+            var height = super.getHeight(textCellData, withWidth: width)
+            if textCellData.bottomContainerSize.height > 0 {
+                height += textCellData.bottomContainerSize.height + TUISwift.kScale375(6)
+            }
+            // Add extra height when container needs to be moved down due to long nameLabel
+            if textCellData.topContainerInsetTop > 0 {
+                height += textCellData.topContainerInsetTop
+            }
+            return height
+        }
+        
+        var height: CGFloat = 0
+        
+        if textCellData.showName {
+            height += TUISwift.kScale390(20)
+        }
+        if textCellData.showMessageModifyReplies {
+            height += TUISwift.kScale390(22)
+        }
+        
+        if textCellData.messageContainerAppendSize.height > 0 {
+            height += textCellData.messageContainerAppendSize.height
+        }
+        
+        height += textCellData.cellLayout?.messageInsets.top ?? 0
+        height += textCellData.cellLayout?.messageInsets.bottom ?? 0
+        
         if textCellData.bottomContainerSize.height > 0 {
             height += textCellData.bottomContainerSize.height + TUISwift.kScale375(6)
         }
+        
+        // Add extra height when container needs to be moved down due to long nameLabel
+        if textCellData.topContainerInsetTop > 0 {
+            height += textCellData.topContainerInsetTop
+        }
+        
         return height
     }
         
@@ -270,6 +448,15 @@ public class TUITextMessageCell: TUIBubbleMessageCell, UITextViewDelegate, TUITe
     override public class func getContentSize(_ data: TUIMessageCellData) -> CGSize {
         guard let textCellData = data as? TUITextMessageCellData else {
             assertionFailure("data must be kind of TUITextMessageCellData")
+            return .zero
+        }
+
+        let shouldHide = getShouldHideOriginalText(for: textCellData)
+        
+        // When bilingual mode is OFF and translation is shown, hide original text bubble
+        if shouldHide {
+            textCellData.textSize = .zero
+            textCellData.textOrigin = .zero
             return .zero
         }
 
@@ -309,5 +496,26 @@ public class TUITextMessageCell: TUIBubbleMessageCell, UITextViewDelegate, TUITe
         }
 
         return CGSize(width: width, height: height)
+    }
+    
+    // MARK: - getShouldHideOriginalText
+    
+    private class func getShouldHideOriginalText(for cellData: TUITextMessageCellData) -> Bool {
+        guard let message = cellData.innerMessage else { return false }
+        
+        // Call TUICore extension to get visibility state
+        let param: [String: Any] = ["message": message]
+        let result = TUICore.callService(
+            "TUICore_TUITranslationService",
+            method: "TUICore_TUITranslationService_GetShouldHideOriginalTextMethod",
+            param: param
+        )
+        
+        // Result is NSNumber wrapping Bool
+        if let shouldHide = result as? NSNumber {
+            return shouldHide.boolValue
+        }
+        
+        return false
     }
 }

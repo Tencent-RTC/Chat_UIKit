@@ -78,6 +78,10 @@ public class TUITextMessageCell_Minimalist: TUIBubbleMessageCell_Minimalist, UIT
     }
     
     private func setupViews() {
+        // Allow content to extend beyond cell bounds (for topContainer)
+        clipsToBounds = false
+        contentView.clipsToBounds = false
+        
         textView = TUITextView()
         textView.backgroundColor = .clear
         textView.textContainerInset = .zero
@@ -91,6 +95,10 @@ public class TUITextMessageCell_Minimalist: TUIBubbleMessageCell_Minimalist, UIT
         
         bottomContainer = UIView()
         contentView.addSubview(bottomContainer)
+        
+        topContainer = UIView()
+        topContainer.isUserInteractionEnabled = true
+        contentView.addSubview(topContainer)
         
         voiceReadPoint = UIImageView()
         voiceReadPoint.backgroundColor = .red
@@ -106,11 +114,30 @@ public class TUITextMessageCell_Minimalist: TUIBubbleMessageCell_Minimalist, UIT
         for view in bottomContainer.subviews {
             view.removeFromSuperview()
         }
+        for view in topContainer.subviews {
+            view.removeFromSuperview()
+        }
+        textView.alpha = 1
+        textView.isHidden = false
+        bottomContainer.alpha = 1
+        topContainer.isHidden = true
+        msgTimeLabel.isHidden = false
     }
     
     override public func notifyBottomContainerReady(of cellData: TUIMessageCellData?) {
         let param: [String: Any] = ["TUICore_TUIChatExtension_BottomContainer_CellData": textData as Any]
         TUICore.raiseExtension("TUICore_TUIChatExtension_BottomContainer_MinimalistExtensionID", parentView: bottomContainer, param: param)
+    }
+    
+    override public func notifyTopContainerReady(of cellData: TUIMessageCellData?) {
+        let param: [String: Any] = ["TUICore_TUIChatExtension_TopContainer_CellData": textData as Any]
+        let hasExtension = TUICore.raiseExtension("TUICore_TUIChatExtension_TopContainer_MinimalistExtensionID", parentView: topContainer, param: param)
+        topContainer.isHidden = !hasExtension
+        
+        // If extension was added, layout topContainer
+        if hasExtension {
+            layoutTopContainer()
+        }
     }
     
     override public func fill(with data: TUICommonCellData) {
@@ -129,6 +156,11 @@ public class TUITextMessageCell_Minimalist: TUIBubbleMessageCell_Minimalist, UIT
             textView.font = textFont
             textView.textAlignment = TUISwift.isRTL() ? .right : .left
             
+            let shouldHide = TUITextMessageCell_Minimalist.getShouldHideOriginalText(for: data)
+            textView.isHidden = shouldHide
+            textView.alpha = shouldHide ? 0 : 1
+            msgTimeLabel.isHidden = shouldHide
+            
             setNeedsUpdateConstraints()
             updateConstraintsIfNeeded()
             layoutIfNeeded()
@@ -141,6 +173,19 @@ public class TUITextMessageCell_Minimalist: TUIBubbleMessageCell_Minimalist, UIT
     
     override public func updateConstraints() {
         super.updateConstraints()
+        
+        // If topContainerInsetTop > 0, adjust container's top offset to move it down
+        // This prevents nameLabel from overlapping with topContainer
+        if let textData = textData, textData.topContainerInsetTop > 0 {
+            let cellLayout = textData.cellLayout
+            let baseOffset = cellLayout?.messageInsets.top ?? 0
+            let extraOffset = textData.topContainerInsetTop
+            
+            container.snp.updateConstraints { make in
+                make.top.equalTo(nameLabel.snp.bottom).offset(baseOffset + extraOffset)
+            }
+        }
+        
         textView.snp.remakeConstraints { make in
             make.leading.equalTo(bubbleView).offset(ceil(textData?.textOrigin.x ?? 0))
             make.top.equalTo(bubbleView).offset(ceil(textData?.textOrigin.y ?? 0))
@@ -154,7 +199,9 @@ public class TUITextMessageCell_Minimalist: TUIBubbleMessageCell_Minimalist, UIT
                 make.size.equalTo(CGSize(width: 5, height: 5))
             }
         }
+
         layoutBottomContainer()
+        layoutTopContainer()
     }
     
     override public func layoutSubviews() {
@@ -192,6 +239,67 @@ public class TUITextMessageCell_Minimalist: TUIBubbleMessageCell_Minimalist, UIT
             var newRect = retryView.frame
             newRect.size.height += bottomContainer.mm_h
             retryView.frame = newRect
+        }
+    }
+    
+    func layoutTopContainer() {
+        guard !topContainer.isHidden else { return }
+        guard let textData = textData else { return }
+        
+        let topContainerSize = textData.topContainerSize
+        guard topContainerSize.width > 0 && topContainerSize.height > 0 else {
+            topContainer.isHidden = true
+            return
+        }
+        
+        // Check if original text is hidden (translation mode)
+        let shouldHide = TUITextMessageCell_Minimalist.getShouldHideOriginalText(for: textData)
+        
+        // Position topContainer at top-right corner of bubbleView or bottomContainer
+        // The container's centerY aligns with bubble's/bottomContainer's top edge
+        topContainer.snp.remakeConstraints { make in
+            if shouldHide && !bottomContainer.isHidden {
+                // When original text is hidden, align with bottomContainer
+                make.trailing.equalTo(bottomContainer.snp.trailing)
+                make.centerY.equalTo(bottomContainer.snp.top)
+            } else {
+                // Normal mode: align with bubbleView
+                make.trailing.equalTo(bubbleView.snp.trailing)
+                make.centerY.equalTo(bubbleView.snp.top)
+            }
+            make.size.equalTo(topContainerSize)
+        }
+    }
+    
+    func animateOriginalTextVisibilityIfNeeded(animated: Bool) {
+        guard let textCellData = textData else { return }
+        
+        let shouldShowBottomContainer = !CGSizeEqualToSize(textCellData.bottomContainerSize, .zero)
+        
+        if !animated {
+            bottomContainer.isHidden = !shouldShowBottomContainer
+            bottomContainer.alpha = shouldShowBottomContainer ? 1 : 0
+            return
+        }
+        
+        bottomContainer.layer.removeAllAnimations()
+        
+        if shouldShowBottomContainer {
+            bottomContainer.isHidden = false
+            bottomContainer.alpha = 0
+            
+            UIView.animate(withDuration: 0.25) {
+                self.bottomContainer.alpha = 1
+            }
+        } else {
+            bottomContainer.isHidden = false
+            bottomContainer.alpha = 1
+            
+            UIView.animate(withDuration: 0.25, animations: {
+                self.bottomContainer.alpha = 0
+            }, completion: { _ in
+                self.bottomContainer.isHidden = true
+            })
         }
     }
     
@@ -244,10 +352,44 @@ public class TUITextMessageCell_Minimalist: TUIBubbleMessageCell_Minimalist, UIT
         delegate?.onLongPressMessage(self)
     }
     
+    // MARK: - getShouldHideOriginalText Helper
+    
+    private class func getShouldHideOriginalText(for cellData: TUITextMessageCellData) -> Bool {
+        guard let message = cellData.innerMessage else { return false }
+        
+        // Call TUICore service to get visibility state
+        let param: [String: Any] = ["message": message]
+        let result = TUICore.callService(
+            "TUICore_TUITranslationService",
+            method: "TUICore_TUITranslationService_GetShouldHideOriginalTextMethod",
+            param: param
+        )
+        
+        // Result is NSNumber wrapping Bool
+        if let shouldHide = result as? NSNumber {
+            return shouldHide.boolValue
+        }
+        
+        return false
+    }
+    
     // MARK: - TUIMessageCelllProtocol
 
     override public class func getEstimatedHeight(_ data: TUIMessageCellData) -> CGFloat {
         return 44.0
+    }
+    
+    private class func getTopContainerInsetTop(for cellData: TUITextMessageCellData) -> CGFloat {
+        let param: [String: Any] = ["cellData": cellData]
+        let result = TUICore.callService(
+            "TUICore_TUITextToVoiceService",
+            method: "TUICore_TUITextToVoiceService_CalculateTopContainerInsetTopMethod",
+            param: param
+        )
+        if let insetTop = result as? NSNumber {
+            return CGFloat(insetTop.doubleValue)
+        }
+        return 0
     }
         
     override public class func getHeight(_ data: TUIMessageCellData, withWidth width: CGFloat) -> CGFloat {
@@ -255,11 +397,52 @@ public class TUITextMessageCell_Minimalist: TUIBubbleMessageCell_Minimalist, UIT
             assertionFailure("data must be kind of TUITextMessageCellData")
             return CGFloat.zero
         }
-            
-        var height = super.getHeight(textCellData, withWidth: width)
+        
+        // Calculate topContainerInsetTop via plugin service
+        let topContainerInsetTop = getTopContainerInsetTop(for: textCellData)
+        textCellData.topContainerInsetTop = topContainerInsetTop
+        
+        // Read shouldHideOriginalText from translation plugin
+        let shouldHide = getShouldHideOriginalText(for: textCellData)
+        
+        if !shouldHide {
+            var height = super.getHeight(textCellData, withWidth: width)
+            if textCellData.bottomContainerSize.height > 0 {
+                height += textCellData.bottomContainerSize.height + 6
+            }
+            // Add extra height when container needs to be moved down due to long nameLabel
+            if textCellData.topContainerInsetTop > 0 {
+                height += textCellData.topContainerInsetTop
+            }
+            return height
+        }
+        
+        // When original text is hidden, calculate minimal height
+        var height: CGFloat = 0
+        
+        if textCellData.showName {
+            height += TUISwift.kScale390(20)
+        }
+        if textCellData.showMessageModifyReplies {
+            height += TUISwift.kScale390(22)
+        }
+        
+        if textCellData.messageContainerAppendSize.height > 0 {
+            height += textCellData.messageContainerAppendSize.height
+        }
+        
+        height += textCellData.cellLayout?.messageInsets.top ?? 0
+        height += textCellData.cellLayout?.messageInsets.bottom ?? 0
+        
         if textCellData.bottomContainerSize.height > 0 {
             height += textCellData.bottomContainerSize.height + 6
         }
+        
+        // Add extra height when container needs to be moved down due to long nameLabel
+        if textCellData.topContainerInsetTop > 0 {
+            height += textCellData.topContainerInsetTop
+        }
+        
         return height
     }
         
@@ -267,6 +450,14 @@ public class TUITextMessageCell_Minimalist: TUIBubbleMessageCell_Minimalist, UIT
         guard let textCellData = data as? TUITextMessageCellData else {
             assertionFailure("data must be kind of TUITextMessageData")
             return CGSize.zero
+        }
+        
+        let shouldHide = getShouldHideOriginalText(for: textCellData)
+        
+        if shouldHide {
+            textCellData.textSize = .zero
+            textCellData.textOrigin = .zero
+            return .zero
         }
             
         let textFont = textCellData.direction == .incoming ? incommingTextFont! : outgoingTextFont!

@@ -59,10 +59,18 @@ PODS:
     - TUIChat_Swift
     - TUICore
   - TUIGroupNotePlugin_Swift (8.7.7201)
+  - TUIOfficialAccountPlugin_Swift (1.0.0):
+    - TIMCommon_Swift
+    - TUIChat_Swift
+    - TUICore
   - TUIPollPlugin_Swift (8.7.7201)
   - TUISearch_Swift (8.7.7201):
     - SnapKit
     - TIMCommon_Swift
+    - TUICore
+  - TUITextToVoicePlugin_Swift (1.0.0):
+    - TIMCommon_Swift
+    - TUIChat_Swift
     - TUICore
   - TUITranslationPlugin_Swift (8.7.7201):
     - TIMCommon_Swift
@@ -72,7 +80,7 @@ PODS:
     - TIMCommon_Swift
     - TUIChat_Swift
     - TUICore
-  - TXIMSDK_Plus_iOS_XCFramework (8.7.7201)
+  - TXIMSDK_Plus_iOS_XCFramework (8.8.7373)
   - TXLiteAVSDK_Professional (12.4.17856):
     - TXLiteAVSDK_Professional/Professional (= 12.4.17856)
   - TXLiteAVSDK_Professional/Professional (12.4.17856)
@@ -95,11 +103,13 @@ DEPENDENCIES:
   - TUICore (from `../TUIKit/TUICore`)
   - TUIEmojiPlugin_Swift (from `../TUIKit/TUIEmojiPlugin`)
   - TUIGroupNotePlugin_Swift (= 8.7.7201)
+  - TUIOfficialAccountPlugin_Swift (from `../TUIKit/TUIOfficialAccountPlugin`)
   - TUIPollPlugin_Swift (= 8.7.7201)
   - TUISearch_Swift (from `../TUIKit/TUISearch`)
+  - TUITextToVoicePlugin_Swift (from `../TUIKit/TUITextToVoicePlugin`)
   - TUITranslationPlugin_Swift (from `../TUIKit/TUITranslationPlugin`)
   - TUIVoiceToTextPlugin_Swift (from `../TUIKit/TUIVoiceToTextPlugin`)
-  - TXIMSDK_Plus_iOS_XCFramework (= 8.7.7201)
+  - TXIMSDK_Plus_iOS_XCFramework (= 8.8.7373)
   - TXLiteAVSDK_Professional (~> 12.4.17856)
 
 SPEC REPOS:
@@ -135,8 +145,12 @@ EXTERNAL SOURCES:
     :path: "../TUIKit/TUICore"
   TUIEmojiPlugin_Swift:
     :path: "../TUIKit/TUIEmojiPlugin"
+  TUIOfficialAccountPlugin_Swift:
+    :path: "../TUIKit/TUIOfficialAccountPlugin"
   TUISearch_Swift:
     :path: "../TUIKit/TUISearch"
+  TUITextToVoicePlugin_Swift:
+    :path: "../TUIKit/TUITextToVoicePlugin"
   TUITranslationPlugin_Swift:
     :path: "../TUIKit/TUITranslationPlugin"
   TUIVoiceToTextPlugin_Swift:
@@ -162,13 +176,15 @@ SPEC CHECKSUMS:
   TUICore: 7c576e9317fd13c52036edec6b7078fddf21aa21
   TUIEmojiPlugin_Swift: 467a8e323ebe0f3307407d2b739fd3702f15ee61
   TUIGroupNotePlugin_Swift: 39fe2778eed7d1bb7e559d58e4b0ca0812ec1e14
+  TUIOfficialAccountPlugin_Swift: a27d091cc7419d72c7c3f16525effffd95dd1991
   TUIPollPlugin_Swift: 2375b00576c2673714baea6b1851fea2fca16d70
   TUISearch_Swift: 21ff43dd2246a14e2aa206e4092c2a00ea8fadcc
+  TUITextToVoicePlugin_Swift: 01f2b79e69266d36a518e0892ce0c671205be23c
   TUITranslationPlugin_Swift: 0c1219eeb8a4dbc5f6b31553d296d2cbea5fa226
   TUIVoiceToTextPlugin_Swift: a3bd9f3a712ca67708d540279fd7bdefb66926d4
-  TXIMSDK_Plus_iOS_XCFramework: 3b435eae84c639f35ae8dc9c8b92c399a8b0a67f
+  TXIMSDK_Plus_iOS_XCFramework: a99356b102d4c47ee1c60fa91837d7efb0f8f83d
   TXLiteAVSDK_Professional: 888264d7b85945ef9e8166cd9ba61a40928ddb5a
 
-PODFILE CHECKSUM: 48fb585bb2f16449435ede62ed8db587f4972678
+PODFILE CHECKSUM: c65177a7ff895ff8b5f0ae98145562c04099640a
 
 COCOAPODS: 1.16.2

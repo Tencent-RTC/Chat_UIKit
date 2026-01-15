@@ -16,6 +16,7 @@ import TUICore
     @objc func didClearAllHistory(_ cell: TUIButtonCell)
     @objc func didSelectGroupNotice()
     @objc func didAddMembers()
+    @objc optional func didSelectVoiceSetting(_ cell: TUICommonTextCell)
 }
 
 class TUIGroupInfoDataProvider_Minimalist: NSObject, V2TIMGroupListener {
@@ -351,6 +352,35 @@ class TUIGroupInfoDataProvider_Minimalist: NSObject, V2TIMGroupListener {
             groupNickNameCellData = aliasData
             dataList.append([aliasData])
         }
+        
+        // Voice message settings section (after alias)
+        let extensionParam: [String: Any] = [
+            "groupID": groupID,
+            "pushVC": delegate?.pushNavigationController() as Any
+        ]
+        let voiceExtensionList = TUICore.getExtensionList(
+            "TUICore_TUIChatExtension_GroupProfileSettingsSwitch_MinimalistExtensionID",
+            param: extensionParam
+        )
+        
+        if !voiceExtensionList.isEmpty {
+            var voiceSettingsArray: [Any] = []
+            for info in voiceExtensionList {
+                if let infoData = info.data,
+                   let displayValue = infoData["displayValue"] as? String {
+                    let textData = TUICommonTextCellData()
+                    textData.key = info.text ?? ""
+                    textData.value = displayValue
+                    textData.showAccessory = true
+                    textData.cselector = #selector(didSelectVoiceSetting(_:))
+                    textData.tui_extValueObj = info
+                    voiceSettingsArray.append(textData)
+                }
+            }
+            if !voiceSettingsArray.isEmpty {
+                dataList.append(voiceSettingsArray)
+            }
+        }
 
         if !TUIGroupConfig.shared.isItemHiddenInGroupConfig(.background) {
             // Background
@@ -504,6 +534,10 @@ class TUIGroupInfoDataProvider_Minimalist: NSObject, V2TIMGroupListener {
 
     @objc func didSelectOnChangeBackgroundImage(_ cell: TUICommonTextCell) {
         delegate?.didSelectOnChangeBackgroundImage(cell)
+    }
+    
+    @objc func didSelectVoiceSetting(_ cell: TUICommonTextCell) {
+        delegate?.didSelectVoiceSetting?(cell)
     }
 
     @objc func didDeleteGroup(_ cell: TUIButtonCell) {

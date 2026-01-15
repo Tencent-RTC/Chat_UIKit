@@ -28,6 +28,7 @@ NS_ASSUME_NONNULL_BEGIN
 + (UIColor *)tuiVoiceToTextDynamicColor:(NSString *)colorKey defaultColor:(NSString *)defaultColor;
 + (UIColor *)tuiGroupNoteDynamicColor:(NSString *)colorKey defaultColor:(NSString *)defaultColor;
 + (UIColor *)tuiPollDynamicColor:(NSString *)colorKey defaultColor:(NSString *)defaultColor;
++ (UIColor *)tuiOfficialAccountDynamicColor:(NSString *)colorKey defaultColor:(NSString *)defaultColor;
 
 #pragma mark - Image
 + (UIImage *)defaultGroupAvatarImageByGroupType:(NSString * _Nullable)groupType;
@@ -54,6 +55,7 @@ NS_ASSUME_NONNULL_BEGIN
 + (UIImage *)tuiSearchBundleThemeImage:(NSString *)imageName defaultImage:(NSString *)defaultImage;
 + (UIImage *)tuiGroupNoteBundleThemeImage:(NSString *)imageName defaultImage:(NSString *)defaultImage;
 + (UIImage *)tuiPollBundleThemeImage:(NSString *)imageName defaultImage:(NSString *)defaultImage;
++ (UIImage *)tuiOfficialAccountBundleThemeImage:(NSString *)imageName defaultImage:(NSString *)defaultImage;
 
 #pragma mark - String
 + (NSString *)timCommonLocalizableString:(NSString *)key;
@@ -92,6 +94,7 @@ NS_ASSUME_NONNULL_BEGIN
 + (NSString *)tuiSearchImagePath:(NSString *)imageName;
 + (NSString *)tuiGroupNoteThemePath;
 + (NSString *)tuiPollThemePath;
++ (NSString *)tuiOfficialAccountThemePath;
 + (NSString *)timCommonThemePath;
 
 #pragma mark - Size and primitive value

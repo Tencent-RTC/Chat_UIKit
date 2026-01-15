@@ -122,5 +122,17 @@
 	<string>#FFFFFF</string>
 	<key>chat_small_tongue_line_color</key>
 	<string>#E5E5E5</string>
+	<key>chat_record_error_color</key>
+	<string>#FA5251</string>
+	<key>chat_record_disabled_btn_color</key>
+	<string>#CCE2FF</string>
+	<key>chat_record_btn_bg_color</key>
+	<string>#DFE4ED</string>
+	<key>chat_record_btn_text_color</key>
+	<string>#8F8F8F</string>
+	<key>chat_record_waveform_bar_color</key>
+	<string>#0000004D</string>
+	<key>chat_record_dark_text_color</key>
+	<string>#000000E5</string>
 </dict>
 </plist>

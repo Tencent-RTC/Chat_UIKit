@@ -16,14 +16,16 @@ target 'TUIKitDemo' do
   pod 'TUISearch_Swift', :path => "../TUIKit/TUISearch"
   pod 'TUITranslationPlugin_Swift', :path => "../TUIKit/TUITranslationPlugin"
   pod 'TUIVoiceToTextPlugin_Swift', :path => "../TUIKit/TUIVoiceToTextPlugin"
+  pod 'TUITextToVoicePlugin_Swift', :path => "../TUIKit/TUITextToVoicePlugin"
   pod 'TUIEmojiPlugin_Swift', :path => "../TUIKit/TUIEmojiPlugin"
+  pod 'TUIOfficialAccountPlugin_Swift', :path => "../TUIKit/TUIOfficialAccountPlugin"
   pod 'TIMPush', '8.7.7201'
   pod 'TUIConversationGroupPlugin_Swift', '8.7.7201'
   pod 'TUIConversationMarkPlugin_Swift', '8.7.7201'
   pod 'TUIPollPlugin_Swift', '8.7.7201'
   pod 'TUIGroupNotePlugin_Swift', '8.7.7201'
   
-  pod 'TXIMSDK_Plus_iOS_XCFramework', '8.7.7201'
+  pod 'TXIMSDK_Plus_iOS_XCFramework', '8.8.7373'
   pod 'TUICallKit_Swift/Professional', '3.1.0.824'
   pod 'TXLiteAVSDK_Professional', '~> 12.4.17856'
   pod 'MJExtension', '3.4.1'

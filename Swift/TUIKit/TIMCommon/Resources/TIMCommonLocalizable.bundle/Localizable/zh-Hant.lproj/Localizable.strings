@@ -184,6 +184,13 @@
 "TUIKitInputRecordReleaseToCancel" = "鬆開手指，取消發送";
 "TUIKitInputRecordTimeshort" = "說話時間太短";
 "TUIKitInputRecordTimeLong" = "說話時間太長";
+"TUIKitInputCancel" = "取消";
+"TUIKitInputConvertToText" = "轉文字";
+"TUIKitInputReleaseToConvertToText" = "鬆手轉文字";
+"TUIKitInputSendOriginalVoice" = "發送原語音";
+"TUIKitInputSend" = "發送";
+"TUIKitInputNoTextRecognized" = "未識別到文字";
+"TUIKitInputNoNetworkOrNotLoggedIn" = "無網路或未登入";
 
 "TUIKitGroupProfileDetails" = "詳細資料";
 "TUIKitGroupProfileMember" = "群成員";
@@ -516,12 +523,31 @@
 "TUIKitGroupMessagePinRepeatedly" = "這條消息已經被置頂了";
 "TUIKitGroupMessageUnPinRepeatedly" = "這條消息已經被取消置頂了";
 
+"TUIKitTextToVoice" = "文字轉語音";
+"TUIKitErrorConvertTextToVoiceFailed" = "文字轉語音失敗";
+"TUIKitErrorTTSTextTooLong" = "文字轉語音失敗：文字太長，最多255個字符";
+
 "TUIKitTranslate" = "翻譯";
 "TUIKitTranslateDefaultTips" = "由騰訊雲 IM 提供翻譯支持";
 "TUIKitTranslateFailed" = "翻譯失敗";
 "Hide" = "隱藏";
 "TranslateMessage" = "將消息翻譯為";
 "TranslateLanguageNotSupport" = "當前翻譯語言不支持，請切換至其他語言";
+"TranslationSettings" = "翻譯設置";
+"AutoTranslateReceivedMessages" = "自動翻譯聊天中收到的消息";
+"AutoTranslateDescription" = "開啟後，會自動翻譯聊天中收到的消息";
+"ShowBilingual" = "顯示雙語";
+"ShowBilingualDescription" = "開啟後，會同時顯示原文和譯文";
+"ShowOriginalText" = "顯示原文";
+
+"VoiceMessageSettings" = "語音消息設置";
+"AutoPlayVoice" = "自動播放語音";
+"AutoPlayVoiceDescription" = "開啟後，將會自動播放所有聊天收到的語音消息";
+"AutoVoiceToText" = "語音消息自動轉文字";
+"AutoVoiceToTextDescription" = "開啟後，將會自動轉換所有聊天收到的語音消息";
+"AutoTextToVoice" = "文字消息自動轉語音";
+"AutoTextToVoiceDescription" = "開啟後，所有聊天中收到的文字消息會被自動轉為語音";
+"TextToVoiceSettings" = "文字轉語音設置";
 
 "TUIKitConvertToText" = "轉文字";
 "TUIKitConvertToTextFailed" = "轉換失敗";
@@ -810,3 +836,66 @@
 
 "TUIChatFaceGroupAllEmojiName" = "所有表情";
 "TUIChatFaceGroupRecentEmojiName" = "最近使用";
+
+"TUITranslationLanguageTitle" = "翻譯語言";
+"TUITranslationLanguageDescription" = "設置消息翻譯的目標語言";
+
+// Voice message settings
+"TUIKitOn" = "開啟";
+"TUIKitOff" = "關閉";
+"FollowGlobalSetting" = "跟隨全局設置";
+
+// Voice Clone
+"VoiceClone" = "音色克隆";
+"VoiceCloneInstruction" = "請錄製一段10-18秒的語音，用於克隆您的專屬音色";
+"VoiceCloneSampleText" = "建議朗讀以下文字：\n\n\"大家好，我是您的專屬語音助手，很高興為您服務。今天天氣真不錯，希望您有一個愉快的心情。\"";
+"VoiceCloneTapToRecord" = "點擊開始錄音";
+"VoiceCloneTapToStop" = "點擊停止錄音";
+"VoiceCloneRecordingComplete" = "錄音完成";
+"VoiceCloneNamePlaceholder" = "請輸入音色名稱（可選）";
+"VoiceCloneSubmit" = "提交克隆";
+"VoiceCloneDefaultName" = "我的音色";
+"VoiceCloneSuccess" = "克隆成功";
+"VoiceCloneSuccessMessage" = "您的專屬音色已創建成功！";
+"VoiceCloneFailed" = "克隆失敗";
+"VoiceCloneRecordTooShort" = "錄音時間太短";
+"VoiceCloneRecordTooShortMessage" = "請錄製至少3秒的語音";
+"VoiceCloneMicPermissionRequired" = "需要麥克風權限";
+"VoiceCloneMicPermissionMessage" = "請在設置中允許訪問麥克風以錄製語音";
+"VoiceCloneGoToSettings" = "去設置";
+"VoiceCloneDescription" = "錄製語音克隆專屬音色";
+
+// Voice Selection
+"VoiceSelection" = "音色選擇";
+"VoiceSelectionDescription" = "選擇文字轉語音使用的音色";
+"VoiceSettings" = "音色設置";
+"DefaultVoices" = "默認音色";
+"CustomVoices" = "自定義音色";
+"NoCustomVoices" = "暫無自定義音色";
+"CustomVoiceBadge" = "自定義";
+"DeleteVoice" = "刪除音色";
+"DeleteVoiceConfirmFormat" = "確定要刪除音色「%@」嗎？";
+"DeleteVoiceFailed" = "刪除失敗";
+
+// Default Voice Names
+"VoiceDefault" = "預設";
+"VoiceFollowGlobal" = "跟隨全局";
+"VoiceXiaoxuMale" = "小旭（男）";
+"VoiceXiaomeiFemale" = "小美（女）";
+"VoiceXiaoxinFemale" = "小新（女）";
+"VoiceXiaoyueFemale" = "小月（女）";
+"Default" = "預設";
+
+// Official Channel
+"TUIKitOfficialAccount" = "公眾號";
+"TUIKitOfficialChannel" = "公眾號";
+"TUIKitCreatedAccounts" = "我創建的";
+"TUIKitFollowedAccounts" = "我關注的";
+"TUIKitRecommendedAccounts" = "發現可關注的公眾號";
+"TUIKitSubscribers" = "訂閱者";
+"TUIKitFollowing" = "已關注";
+"TUIKitFollow" = "關注";
+"TUIKitNoOfficialAccounts" = "暫無公眾號";
+"TUIKitSendMessage" = "發消息";
+"TUIKitNoData" = "暫無數據";
+"TUIKitImageSaved" = "圖片已保存";

@@ -3,7 +3,7 @@ import TUIChat
 import TUICore
 import UIKit
 
-public class TUITranslationExtensionObserver: NSObject, TUIExtensionProtocol {
+public class TUITranslationExtensionObserver: NSObject, TUIExtensionProtocol, TUIServiceProtocol {
     weak var navVC: UINavigationController?
     weak var cellData: TUICommonTextCellData?
     
@@ -16,6 +16,9 @@ public class TUITranslationExtensionObserver: NSObject, TUIExtensionProtocol {
         super.init()
         TUICore.registerExtension("TUICore_TUIChatExtension_BottomContainer_ClassicExtensionID", object: self)
         TUICore.registerExtension("TUICore_TUIChatExtension_BottomContainer_MinimalistExtensionID", object: self)
+        
+        // Register service for translation state queries
+        TUICore.registerService("TUICore_TUITranslationService", object: self)
     }
     
     @objc public static func swiftLoad() {
@@ -28,6 +31,22 @@ public class TUITranslationExtensionObserver: NSObject, TUIExtensionProtocol {
         // UI extensions of setting.
         TUICore.registerExtension("TUICore_TUIContactExtension_MeSettingMenu_ClassicExtensionID", object: TUITranslationExtensionObserver.sharedInstance)
         TUICore.registerExtension("TUICore_TUIContactExtension_MeSettingMenu_MinimalistExtensionID", object: TUITranslationExtensionObserver.sharedInstance)
+        
+        // Initialize translation data provider to register message listener
+        _ = TUITranslationDataProvider.shared
+    }
+    
+    // MARK: - TUIServiceProtocol
+    
+    public func onCall(_ method: String, param: [AnyHashable: Any]?) -> Any? {
+        if method == "TUICore_TUITranslationService_GetShouldHideOriginalTextMethod" {
+            guard let message = param?["message"] as? V2TIMMessage else {
+                return NSNumber(value: false)
+            }
+            let shouldHide = TUITranslationDataProvider.shouldHideOriginalText(message)
+            return NSNumber(value: shouldHide)
+        }
+        return nil
     }
     
     // MARK: - TUIExtensionProtocol
@@ -117,9 +136,8 @@ public class TUITranslationExtensionObserver: NSObject, TUIExtensionProtocol {
             }
             
             let data = TUICommonTextCellData()
-            data.key = TUISwift.timCommonLocalizableString("TranslateMessage")
+            data.key = TUISwift.timCommonLocalizableString("TranslationSettings")
             data.showAccessory = true
-            data.value = TUITranslationConfig.shared.targetLanguageName ?? ""
             cellData = data
             
             let cell = TUICommonTextCell()
@@ -140,10 +158,7 @@ public class TUITranslationExtensionObserver: NSObject, TUIExtensionProtocol {
     }
     
     @objc func onClickedTargetLanguageCell(_ cell: TUICommonTextCell) {
-        let vc = TUITranslationLanguageController()
-        vc.onSelectedLanguage = { [weak self] languageName in
-            self?.cellData?.value = languageName
-        }
+        let vc = TUITranslationSettingsController()
         navVC?.pushViewController(vc, animated: true)
     }
     

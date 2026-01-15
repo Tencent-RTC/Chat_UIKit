@@ -179,6 +179,13 @@
 "TUIKitInputRecordReleaseToCancel" = "Release to Cancel";
 "TUIKitInputRecordTimeshort" = "Message too short";
 "TUIKitInputRecordTimeLong" = "Message too long";
+"TUIKitInputCancel" = "Cancel";
+"TUIKitInputConvertToText" = "To Text";
+"TUIKitInputReleaseToConvertToText" = "Release to convert text";
+"TUIKitInputSendOriginalVoice" = "Send audio";
+"TUIKitInputSend" = "Send";
+"TUIKitInputNoTextRecognized" = "No text recognized";
+"TUIKitInputNoNetworkOrNotLoggedIn" = "No network or not logged in";
 
 "TUIKitGroupProfileDetails" = "Details";
 "TUIKitGroupProfileMember" = "Group Members";
@@ -518,12 +525,31 @@
 "TUIKitGroupMessagePinRepeatedly" = "The message is already pinned.";
 "TUIKitGroupMessageUnPinRepeatedly" = "This message has already been unpinned.";
 
+"TUIKitTextToVoice" = "Text to Voice";
+"TUIKitErrorConvertTextToVoiceFailed" = "Failed to convert text to voice";
+"TUIKitErrorTTSTextTooLong" = "Text is too long (max 255 characters)";
+
 "TUIKitTranslate" = "Translate";
 "TUIKitTranslateDefaultTips" = "Translated by IM";
 "TUIKitTranslateFailed" = "Unable to translate";
 "Hide" = "Hide";
 "TranslateMessage" = "Translate message to language";
 "TranslateLanguageNotSupport" = "Translation is not supported between current languages, please switch to another language.";
+"TranslationSettings" = "Translation Settings";
+"AutoTranslateReceivedMessages" = "Auto translate received messages in chat";
+"AutoTranslateDescription" = "When enabled, received messages in chat will be automatically translated";
+"ShowBilingual" = "Show bilingual";
+"ShowBilingualDescription" = "When enabled, both original text and translation will be displayed";
+"ShowOriginalText" = "Show original";
+
+"VoiceMessageSettings" = "Voice Message Settings";
+"AutoPlayVoice" = "Auto play voice";
+"AutoPlayVoiceDescription" = "When enabled, all received voice messages will be played automatically";
+"AutoVoiceToText" = "Auto voice to text";
+"AutoVoiceToTextDescription" = "When enabled, all received voice messages will be converted to text automatically";
+"AutoTextToVoice" = "Auto text to voice";
+"AutoTextToVoiceDescription" = "When enabled, all received text messages will be converted to voice automatically";
+"TextToVoiceSettings" = "Text to Voice Settings";
 
 "TUIKitConvertToText" = "Convert\nto Text";
 "TUIKitConvertToTextFailed" = "Unable to convert";
@@ -812,3 +838,66 @@
 "zh-Hant" = "Traditional Chinese";
 "TUIChatFaceGroupAllEmojiName" = "All";
 "TUIChatFaceGroupRecentEmojiName" = "Recently";
+
+"TUITranslationLanguageTitle" = "Translation Language";
+"TUITranslationLanguageDescription" = "Set the target language for message translation";
+
+// Voice message settings
+"TUIKitOn" = "On";
+"TUIKitOff" = "Off";
+"FollowGlobalSetting" = "Follow Global Setting";
+
+// Voice Clone
+"VoiceClone" = "Voice Clone";
+"VoiceCloneInstruction" = "Please record 10-18 seconds of audio to clone your custom voice";
+"VoiceCloneSampleText" = "Suggested text to read:\n\n\"Hello everyone, I am your personal voice assistant, happy to serve you. The weather is really nice today, hope you have a pleasant day.\"";
+"VoiceCloneTapToRecord" = "Tap to start recording";
+"VoiceCloneTapToStop" = "Tap to stop recording";
+"VoiceCloneRecordingComplete" = "Recording complete";
+"VoiceCloneNamePlaceholder" = "Enter voice name (optional)";
+"VoiceCloneSubmit" = "Submit Clone";
+"VoiceCloneDefaultName" = "My Voice";
+"VoiceCloneSuccess" = "Clone Successful";
+"VoiceCloneSuccessMessage" = "Your custom voice has been created successfully!";
+"VoiceCloneFailed" = "Clone Failed";
+"VoiceCloneRecordTooShort" = "Recording too short";
+"VoiceCloneRecordTooShortMessage" = "Please record at least 3 seconds of audio";
+"VoiceCloneMicPermissionRequired" = "Microphone Permission Required";
+"VoiceCloneMicPermissionMessage" = "Please allow microphone access in Settings to record audio";
+"VoiceCloneGoToSettings" = "Go to Settings";
+"VoiceCloneDescription" = "Record audio to clone custom voice";
+
+// Voice Selection
+"VoiceSelection" = "Voice Selection";
+"VoiceSelectionDescription" = "Select voice for text-to-speech";
+"VoiceSettings" = "Voice Settings";
+"DefaultVoices" = "Default Voices";
+"CustomVoices" = "Custom Voices";
+"NoCustomVoices" = "No custom voices";
+"CustomVoiceBadge" = "Custom";
+"DeleteVoice" = "Delete Voice";
+"DeleteVoiceConfirmFormat" = "Are you sure you want to delete voice \"%@\"?";
+"DeleteVoiceFailed" = "Delete Failed";
+
+// Default Voice Names
+"VoiceDefault" = "Default";
+"VoiceFollowGlobal" = "Follow Global";
+"VoiceXiaoxuMale" = "Xiaoxu (Male)";
+"VoiceXiaomeiFemale" = "Xiaomei (Female)";
+"VoiceXiaoxinFemale" = "Xiaoxin (Female)";
+"VoiceXiaoyueFemale" = "Xiaoyue (Female)";
+"Default" = "Default";
+
+// Official Channel
+"TUIKitOfficialAccount" = "Official Channel";
+"TUIKitOfficialChannel" = "Official Channel";
+"TUIKitCreatedAccounts" = "My Creations";
+"TUIKitFollowedAccounts" = "My Followings";
+"TUIKitRecommendedAccounts" = "Find Official channels to follow";
+"TUIKitSubscribers" = "fans";
+"TUIKitFollowing" = "Following";
+"TUIKitFollow" = "Follow";
+"TUIKitNoOfficialAccounts" = "No official Channels";
+"TUIKitSendMessage" = "Send Message";
+"TUIKitNoData" = "No data available";
+"TUIKitImageSaved" = "Image saved";

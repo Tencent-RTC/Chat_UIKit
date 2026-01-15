@@ -132,6 +132,7 @@ public class TUIBaseMessageController_Minimalist: UITableViewController, TUIMess
         NotificationCenter.default.addObserver(self, selector: #selector(onReceivedSendMessageRequest(_:)), name: NSNotification.Name(TUIChatSendMessageNotification), object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onReceivedSendMessageWithoutUpdateUIRequest(_:)), name: NSNotification.Name(TUIChatSendMessageWithoutUpdateUINotification), object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onReceivedInsertMessageWithoutUpdateUIRequest(_:)), name: NSNotification.Name(TUIChatInsertMessageWithoutUpdateUINotification), object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(onAutoPlayVoiceMessageRequest(_:)), name: NSNotification.Name("TUIChat_AutoPlayVoiceMessage"), object: nil)
     }
 
     // MARK: Data Provider
@@ -476,6 +477,19 @@ public class TUIBaseMessageController_Minimalist: UITableViewController, TUIMess
                         _ = tableView(tableView, heightForRowAt: indexPath)
                         tableView.endUpdates()
                     }
+                    
+                    if let msgID = data.innerMessage?.msgID {
+                        DispatchQueue.main.async { [weak self] in
+                            guard let self = self,
+                                  let indexPath = self.indexPathOfMessage(msgID),
+                                  let textCell = self.tableView.cellForRow(at: indexPath) as? TUITextMessageCell_Minimalist
+                            else {
+                                return
+                            }
+                            textCell.animateOriginalTextVisibilityIfNeeded(animated: true)
+                        }
+                    }
+                    
                     break
                 }
             }
@@ -506,6 +520,16 @@ public class TUIBaseMessageController_Minimalist: UITableViewController, TUIMess
             messageCellConfig.removeHeightCacheOfMessageCellData(data)
             if let msgID = data.innerMessage?.msgID {
                 reloadAndScrollToBottomOfMessage(msgID, needScroll: isAllowScroll2Bottom)
+                
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self,
+                          let indexPath = self.indexPathOfMessage(msgID),
+                          let textCell = self.tableView.cellForRow(at: indexPath) as? TUITextMessageCell_Minimalist
+                    else {
+                        return
+                    }
+                    textCell.animateOriginalTextVisibilityIfNeeded(animated: true)
+                }
             }
         }
         if key == "TUICore_TUIPluginNotify" && subKey == "TUICore_TUIPluginNotify_WillForwardTextSubKey" {
@@ -557,7 +581,13 @@ public class TUIBaseMessageController_Minimalist: UITableViewController, TUIMess
     }
 
     func dataProviderDataSourceWillChange(_ dataProvider: TUIMessageBaseDataProvider) {
-        tableView.beginUpdates()
+        // Disable all animations during table view updates to prevent cell reuse glitches
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        UIView.performWithoutAnimation {
+            tableView.beginUpdates()
+        }
+        CATransaction.commit()
 
         if TUIBaseMessageController_Minimalist.lastMsgIndexs != nil {
             TUIBaseMessageController_Minimalist.lastMsgIndexs?.removeAll()
@@ -576,16 +606,24 @@ public class TUIBaseMessageController_Minimalist: UITableViewController, TUIMess
         // insert or delete or reload current cell
         TUIBaseMessageController_Minimalist.reloadMsgIndexs?.append(Int(index))
         let indexPaths = [IndexPath(row: Int(index), section: 0)]
-        switch type {
-        case .insert:
-            tableView.insertRows(at: indexPaths, with: animation ? .fade : .none)
-        case .delete:
-            tableView.deleteRows(at: indexPaths, with: animation ? .fade : .none)
-        case .reload:
-            tableView.reloadRows(at: indexPaths, with: animation ? .fade : .none)
-        default:
-            break
+        
+        // Disable implicit animations to prevent cell reuse animation glitches
+        // (e.g., avatar/bubble sliding from previous cell position)
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        UIView.performWithoutAnimation {
+            switch type {
+            case .insert:
+                tableView.insertRows(at: indexPaths, with: .none)
+            case .delete:
+                tableView.deleteRows(at: indexPaths, with: animation ? .fade : .none)
+            case .reload:
+                tableView.reloadRows(at: indexPaths, with: .none)
+            default:
+                break
+            }
         }
+        CATransaction.commit()
 
         // remove cache index
         if let indexPosition = TUIBaseMessageController_Minimalist.lastMsgIndexs?.firstIndex(of: Int(index)) {
@@ -599,20 +637,25 @@ public class TUIBaseMessageController_Minimalist: UITableViewController, TUIMess
     }
 
     func dataProviderDataSourceDidChange(_ dataProvider: TUIMessageBaseDataProvider) {
-        for index in TUIBaseMessageController_Minimalist.lastMsgIndexs ?? [] {
-            let indexPath = IndexPath(row: index, section: 0)
-            if let uiMsgs = messageDataProvider?.uiMsgs, indexPath.row < 0 || indexPath.row >= uiMsgs.count {
-                break
+        // Disable implicit animations to prevent cell reuse animation glitches
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        UIView.performWithoutAnimation {
+            for index in TUIBaseMessageController_Minimalist.lastMsgIndexs ?? [] {
+                let indexPath = IndexPath(row: index, section: 0)
+                if let uiMsgs = messageDataProvider?.uiMsgs, indexPath.row < 0 || indexPath.row >= uiMsgs.count {
+                    break
+                }
+                if let cellData = messageDataProvider?.uiMsgs[indexPath.row] as? TUIMessageCellData {
+                    messageCellConfig.removeHeightCacheOfMessageCellData(cellData)
+                    tableView.reloadRows(at: [indexPath], with: .none)
+                }
             }
-            if let cellData = messageDataProvider?.uiMsgs[indexPath.row] as? TUIMessageCellData {
-                messageCellConfig.removeHeightCacheOfMessageCellData(cellData)
-                tableView.reloadRows(at: [indexPath], with: false ? .fade : .none)
-            }
+            tableView.endUpdates()
         }
+        CATransaction.commit()
         TUIBaseMessageController_Minimalist.lastMsgIndexs?.removeAll()
         TUIBaseMessageController_Minimalist.reloadMsgIndexs?.removeAll()
-
-        tableView.endUpdates()
     }
 
     func dataProvider(_ dataProvider: TUIMessageBaseDataProvider, onRemoveHeightCache cellData: TUIMessageCellData) {
@@ -786,12 +829,30 @@ public class TUIBaseMessageController_Minimalist: UITableViewController, TUIMess
 
         cell = tableView.dequeueReusableCell(withIdentifier: data.reuseId, for: indexPath) as? TUIMessageCell
         cell?.delegate = self
+        
+        // Disable Core Animation implicit animations to prevent cell reuse glitches
+        // (e.g., avatar/bubble sliding from previous cell position when receiving new messages)
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
         cell?.fill(with: data)
         cell?.notifyBottomContainerReady(of: nil)
+        cell?.notifyTopContainerReady(of: nil)
+        cell?.layoutIfNeeded()
+        CATransaction.commit()
+        
         return cell!
     }
 
-    func tableView(_ tableView: UITableView, willDisplayCell cell: UITableViewCell, forRowAt indexPath: IndexPath) {
+    override public func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
+        cell.layer.zPosition = CGFloat(indexPath.row)
+        
+        // Remove any pending animations on the cell to prevent "falling" effect from cell reuse
+        cell.layer.removeAllAnimations()
+        cell.contentView.layer.removeAllAnimations()
+        for subview in cell.contentView.subviews {
+            subview.layer.removeAllAnimations()
+        }
+        
         guard let messageCell = cell as? TUIMessageCell, let data = messageCell.messageData else { return }
         delegate?.willDisplayCell(self, cell: messageCell, withData: data)
     }
@@ -1391,6 +1452,47 @@ public class TUIBaseMessageController_Minimalist: UITableViewController, TUIMess
                 voiceMsg.stopVoiceMessage()
             }
         }
+    }
+
+    @objc func onAutoPlayVoiceMessageRequest(_ notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let msgID = userInfo["msgID"] as? String else {
+            return
+        }
+        
+        // Find the cell for this message and play it
+        guard let indexPath = indexPathOfMessage(msgID),
+              let cell = tableView.cellForRow(at: indexPath) as? TUIVoiceMessageCell_Minimalist else {
+            // Cell not visible, scroll to it first then play
+            scrollCellToBottomOfMessage(msgID)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                guard let self = self,
+                      let retryIndexPath = self.indexPathOfMessage(msgID),
+                      let retryCell = self.tableView.cellForRow(at: retryIndexPath) as? TUIVoiceMessageCell_Minimalist else {
+                    // Notify that play failed (cell not found)
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("TUIChat_AutoPlayVoiceMessageResult"),
+                        object: nil,
+                        userInfo: ["msgID": msgID, "success": false]
+                    )
+                    return
+                }
+                self.playVoiceMessage(retryCell)
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("TUIChat_AutoPlayVoiceMessageResult"),
+                    object: nil,
+                    userInfo: ["msgID": msgID, "success": true]
+                )
+            }
+            return
+        }
+        
+        playVoiceMessage(cell)
+        NotificationCenter.default.post(
+            name: NSNotification.Name("TUIChat_AutoPlayVoiceMessageResult"),
+            object: nil,
+            userInfo: ["msgID": msgID, "success": true]
+        )
     }
 
     func showImageMessage(_ cell: TUIImageMessageCell_Minimalist) {

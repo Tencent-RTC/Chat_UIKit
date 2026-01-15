@@ -138,6 +138,8 @@ public class TUIBaseMessageController: UITableViewController, TUIMessageCellDele
         NotificationCenter.default.addObserver(self, selector: #selector(onReceivedSendMessageRequest(_:)), name: NSNotification.Name(TUIChatSendMessageNotification), object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onReceivedSendMessageWithoutUpdateUIRequest(_:)), name: NSNotification.Name(TUIChatSendMessageWithoutUpdateUINotification), object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onReceivedInsertMessageWithoutUpdateUIRequest(_:)), name: NSNotification.Name(TUIChatInsertMessageWithoutUpdateUINotification), object: nil)
+        // Listen for auto play voice message request
+        NotificationCenter.default.addObserver(self, selector: #selector(onAutoPlayVoiceMessageRequest(_:)), name: NSNotification.Name("TUIChat_AutoPlayVoiceMessage"), object: nil)
     }
 
     @objc func onReceivedSendMessageRequest(_ notification: Notification) {
@@ -264,7 +266,10 @@ public class TUIBaseMessageController: UITableViewController, TUIMessageCellDele
     }
 
     func reloadCellOfMessage(_ messageID: String) {
-        guard let indexPath = indexPathOfMessage(messageID) else { return }
+        guard let indexPath = indexPathOfMessage(messageID) else {
+            return
+        }
+        
         // Disable animation when loading to avoid cell jumping.
         UIView.performWithoutAnimation {
             self.tableView.reloadRows(at: [indexPath], with: .none)
@@ -500,11 +505,25 @@ public class TUIBaseMessageController: UITableViewController, TUIMessageCellDele
                         _ = tableView(tableView, heightForRowAt: indexPath)
                         tableView.endUpdates()
                     }
+
+                    if let msgID = data.innerMessage?.msgID {
+                        DispatchQueue.main.async { [weak self] in
+                            guard let self = self,
+                                  let indexPath = self.indexPathOfMessage(msgID),
+                                  let textCell = self.tableView.cellForRow(at: indexPath) as? TUITextMessageCell
+                            else {
+                                return
+                            }
+                            textCell.animateOriginalTextVisibilityIfNeeded(animated: true)
+                        }
+                    }
+
                     break
                 }
             }
         } else if key == "TUICore_TUIPluginNotify" && subKey == "TUICore_TUIPluginNotify_DidChangePluginViewSubKey" {
             guard let data = param?["TUICore_TUIPluginNotify_DidChangePluginViewSubKey_Data"] as? TUIMessageCellData else { return }
+            
             var isAllowScroll2Bottom = true
             if let allowScroll2Bottom = param?["TUICore_TUIPluginNotify_DidChangePluginViewSubKey_isAllowScroll2Bottom"] as? String, allowScroll2Bottom == "0" {
                 isAllowScroll2Bottom = false
@@ -527,8 +546,19 @@ public class TUIBaseMessageController: UITableViewController, TUIMessageCellDele
             }
 
             messageCellConfig.removeHeightCacheOfMessageCellData(data)
+            
             if let msgID = data.innerMessage?.msgID {
                 reloadAndScrollToBottomOfMessage(msgID, needScroll: isAllowScroll2Bottom)
+                
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self,
+                          let indexPath = self.indexPathOfMessage(msgID),
+                          let textCell = self.tableView.cellForRow(at: indexPath) as? TUITextMessageCell
+                    else {
+                        return
+                    }
+                    textCell.animateOriginalTextVisibilityIfNeeded(animated: true)
+                }
             }
         }
         if key == "TUICore_TUIPluginNotify" && subKey == "TUICore_TUIPluginNotify_WillForwardTextSubKey" {
@@ -573,7 +603,13 @@ public class TUIBaseMessageController: UITableViewController, TUIMessageCellDele
     private static var reloadMsgIndexs: [Int]?
 
     func dataProviderDataSourceWillChange(_ dataProvider: TUIMessageBaseDataProvider) {
-        tableView.beginUpdates()
+        // Disable all animations during table view updates to prevent cell reuse glitches
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        UIView.performWithoutAnimation {
+            tableView.beginUpdates()
+        }
+        CATransaction.commit()
 
         if TUIBaseMessageController.lastMsgIndexs != nil {
             TUIBaseMessageController.lastMsgIndexs?.removeAll()
@@ -590,20 +626,32 @@ public class TUIBaseMessageController: UITableViewController, TUIMessageCellDele
 
     func dataProviderDataSourceChange(_ dataProvider: TUIMessageBaseDataProvider, withType type: TUIMessageBaseDataProviderDataSourceChangeType, atIndex index: UInt, animation: Bool) {
         let indexPath = IndexPath(row: Int(index), section: 0)
-        let rowAnimation: UITableView.RowAnimation = animation ? .fade : .none
 
-        switch type {
-        case .insert:
-            tableView.insertRows(at: [indexPath], with: rowAnimation)
-        case .delete:
-            tableView.deleteRows(at: [indexPath], with: rowAnimation)
-        case .reload:
-            tableView.reloadRows(at: [indexPath], with: rowAnimation)
+        // Disable implicit animations to prevent cell reuse animation glitches
+        // (e.g., avatar/bubble sliding from previous cell position)
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        UIView.performWithoutAnimation {
+            switch type {
+            case .insert:
+                tableView.insertRows(at: [indexPath], with: .none)
+            case .delete:
+                tableView.deleteRows(at: [indexPath], with: animation ? .fade : .none)
+            case .reload:
+                tableView.reloadRows(at: [indexPath], with: .none)
+            }
         }
+        CATransaction.commit()
     }
 
     func dataProviderDataSourceDidChange(_ dataProvider: TUIMessageBaseDataProvider) {
-        tableView.endUpdates()
+        // IMPORTANT: endUpdates must also be inside the animation block to prevent layout animations
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        UIView.performWithoutAnimation {
+            tableView.endUpdates()
+        }
+        CATransaction.commit()
     }
 
     func dataProvider(_ dataProvider: TUIMessageBaseDataProvider, onRemoveHeightCache cellData: TUIMessageCellData) {
@@ -779,12 +827,25 @@ public class TUIBaseMessageController: UITableViewController, TUIMessageCellDele
         cell = tableView.dequeueReusableCell(withIdentifier: data.reuseId, for: indexPath) as? TUIMessageCell
         let oldData = cell?.messageData
         cell?.delegate = self
+        
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
         cell?.fill(with: data)
         cell?.notifyBottomContainerReady(of: oldData)
+        cell?.notifyTopContainerReady(of: oldData)
+        cell?.layoutIfNeeded()
+        CATransaction.commit()
+        
         return cell!
     }
 
     func tableView(_ tableView: UITableView, willDisplayCell cell: UITableViewCell, forRowAt indexPath: IndexPath) {
+        cell.layer.removeAllAnimations()
+        cell.contentView.layer.removeAllAnimations()
+        for subview in cell.contentView.subviews {
+            subview.layer.removeAllAnimations()
+        }
+        
         guard let messageCell = cell as? TUIMessageCell, let messageData = messageCell.messageData else { return }
         delegate?.willDisplayCell(self, cell: messageCell, withData: messageData)
     }
@@ -1581,6 +1642,50 @@ public class TUIBaseMessageController: UITableViewController, TUIMessageCellDele
         }
 
         return neverHitsPlayVoiceQueue
+    }
+    
+    // MARK: - Auto Play Voice Message
+    
+    /// Handle auto play voice message request from TUIVoiceMessageAutoService
+    @objc func onAutoPlayVoiceMessageRequest(_ notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let msgID = userInfo["msgID"] as? String else {
+            return
+        }
+        
+        // Find the cell for this message and play it
+        guard let indexPath = indexPathOfMessage(msgID),
+              let cell = tableView.cellForRow(at: indexPath) as? TUIVoiceMessageCell else {
+            // Cell not visible, scroll to it first then play
+            scrollCellToBottomOfMessage(msgID)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                guard let self = self,
+                      let retryIndexPath = self.indexPathOfMessage(msgID),
+                      let retryCell = self.tableView.cellForRow(at: retryIndexPath) as? TUIVoiceMessageCell else {
+                    // Notify that play failed (cell not found)
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("TUIChat_AutoPlayVoiceMessageResult"),
+                        object: nil,
+                        userInfo: ["msgID": msgID, "success": false]
+                    )
+                    return
+                }
+                self.playVoiceMessage(retryCell)
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("TUIChat_AutoPlayVoiceMessageResult"),
+                    object: nil,
+                    userInfo: ["msgID": msgID, "success": true]
+                )
+            }
+            return
+        }
+        
+        playVoiceMessage(cell)
+        NotificationCenter.default.post(
+            name: NSNotification.Name("TUIChat_AutoPlayVoiceMessageResult"),
+            object: nil,
+            userInfo: ["msgID": msgID, "success": true]
+        )
     }
 
     func showImageMessage(_ cell: TUIImageMessageCell) {

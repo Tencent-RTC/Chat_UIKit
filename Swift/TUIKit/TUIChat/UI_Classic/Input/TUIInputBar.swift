@@ -68,6 +68,10 @@ class TUIInputBar: UIView, UITextViewDelegate, TUIAudioRecorderDelegate, TUIResp
     var isFromReplyPage: Bool = false
     weak var delegate: TUIInputBarDelegate?
     
+    // Voice recording related properties
+    private var currentRecordingPath: String?
+    private var recordingDuration: Int = 0
+    
     // MARK: - AI Conversation Properties
     private var aiStyleEnabled: Bool = false
     var aiIsTyping: Bool = false
@@ -184,6 +188,8 @@ class TUIInputBar: UIView, UITextViewDelegate, TUIAudioRecorderDelegate, TUIResp
         recordButton.addTarget(self, action: #selector(onRecordButtonTouchCancel(_:)), for: [.touchUpOutside, .touchCancel])
         recordButton.addTarget(self, action: #selector(onRecordButtonTouchDragExit(_:)), for: .touchDragExit)
         recordButton.addTarget(self, action: #selector(onRecordButtonTouchDragEnter(_:)), for: .touchDragEnter)
+        recordButton.addTarget(self, action: #selector(onRecordButtonTouchDrag(_:event:)), for: .touchDragInside)
+        recordButton.addTarget(self, action: #selector(onRecordButtonTouchDrag(_:event:)), for: .touchDragOutside)
         recordButton.setTitle(TUISwift.timCommonLocalizableString("TUIKitInputHoldToTalk"), for: .normal)
         recordButton.setTitleColor(TUISwift.tuiChatDynamicColor("chat_input_text_color", defaultColor: "#000000"), for: .normal)
         recordButton.isHidden = true
@@ -353,52 +359,89 @@ class TUIInputBar: UIView, UITextViewDelegate, TUIAudioRecorderDelegate, TUIResp
     }
 
     @objc func onRecordButtonTouchUpInside(_ sender: UIButton) {
+        handleRecordingEnd()
+    }
+
+    @objc func onRecordButtonTouchCancel(_ sender: UIButton) {
+        handleRecordingEnd()
+    }
+    
+    // Handle recording end (called by both touchUpInside and touchCancel)
+    private func handleRecordingEnd() {
         recordButton.backgroundColor = .clear
         recordButton.setTitle(TUISwift.timCommonLocalizableString("TUIKitInputHoldToTalk"), for: .normal)
 
         let interval = Date().timeIntervalSince(recordStartTime ?? Date())
+        let currentZone = recordView?.currentZone ?? .normal
+        
+        // Check recording duration
         if interval < 1 {
-            recordView?.setStatus(.tooShort)
             recorder.cancel()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            // Show toast immediately
+            recordView?.showCustomToast(TUISwift.timCommonLocalizableString("TUIKitInputRecordTimeshort"))
+            // Hide record view immediately with animation
+            recordView?.hideWithAnimation {
                 self.recordView?.removeFromSuperview()
                 self.recordView = nil
             }
-        } else if interval > min(59, TUIChatConfig.shared.maxAudioRecordDuration) {
-            recordView?.setStatus(.tooLong)
+            return
+        }
+        
+        if interval > min(59, TUIChatConfig.shared.maxAudioRecordDuration) {
             recorder.cancel()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            // Show toast immediately
+            recordView?.showCustomToast(TUISwift.timCommonLocalizableString("TUIKitInputRecordTimeLong"))
+            // Hide record view immediately with animation
+            recordView?.hideWithAnimation {
                 self.recordView?.removeFromSuperview()
                 self.recordView = nil
             }
-        } else {
+            return
+        }
+        
+        // Stop recording
+        recorder.stop()
+        currentRecordingPath = recorder.recordedFilePath
+        recordingDuration = Int(interval)
+        
+        // Handle based on zone
+        switch currentZone {
+        case .cancel:
+            // Cancel recording - hide view
             if _recordView != nil {
-                recordView?.removeFromSuperview()
-                recordView = nil
+                recordView?.hideWithAnimation {
+                    self.recordView?.removeFromSuperview()
+                    self.recordView = nil
+                }
             }
-            DispatchQueue.main.async {
-                self.recorder.stop()
-                _ = self.delegate?.inputBarDidSendVoice(self, path: self.recorder.recordedFilePath)
+            handleCancelRecording()
+            
+        case .normal:
+            // Send voice directly - hide view
+            if _recordView != nil {
+                recordView?.hideWithAnimation {
+                    self.recordView?.removeFromSuperview()
+                    self.recordView = nil
+                }
             }
+            sendVoiceMessageDirectly()
+            
+        case .toText:
+            // Convert to text - DON'T hide view, enter text processing state
+            startVoiceToTextConversion()
         }
     }
 
-    @objc func onRecordButtonTouchCancel(_ sender: UIButton) {
-        recordView?.removeFromSuperview()
-        recordView = nil
-        recordButton.backgroundColor = .clear
-        recordButton.setTitle(TUISwift.timCommonLocalizableString("TUIKitInputHoldToTalk"), for: .normal)
-        recorder.cancel()
-    }
-
     @objc func onRecordButtonTouchDragExit(_ sender: UIButton) {
-        recordView?.setStatus(.cancel)
-        recordButton.setTitle(TUISwift.timCommonLocalizableString("TUIKitInputReleaseToCancel"), for: .normal)
     }
 
     @objc func onRecordButtonTouchDragEnter(_ sender: UIButton) {
-        recordView?.setStatus(.recording)
-        recordButton.setTitle(TUISwift.timCommonLocalizableString("TUIKitInputReleaseToSend"), for: .normal)
+    }
+    
+    @objc func onRecordButtonTouchDrag(_ sender: UIButton, event: UIEvent) {
+        guard let touch = event.allTouches?.first else { return }
+        let touchPoint = touch.location(in: window)
+        recordView?.updateZone(touchPoint: touchPoint)
     }
 
     // MARK: - UITextViewDelegate
@@ -676,6 +719,9 @@ class TUIInputBar: UIView, UITextViewDelegate, TUIAudioRecorderDelegate, TUIResp
             make.center.equalTo(window)
             make.width.height.equalTo(window)
         }
+        
+        // Show with fade-in animation (matches Flutter's smooth appearance)
+        recordView.showWithAnimation()
 
         recordStartTime = Date()
         recordView.setStatus(.recording)
@@ -719,17 +765,11 @@ class TUIInputBar: UIView, UITextViewDelegate, TUIAudioRecorderDelegate, TUIResp
     func didRecordTimeChanged(_ recorder: TUIAudioRecorder, _ time: TimeInterval) {
         let uiMaxDuration = min(59, TUIChatConfig.shared.maxAudioRecordDuration)
         let realMaxDuration = uiMaxDuration + 0.7
-        let seconds = Int(uiMaxDuration - time)
-        recordView?.timeLabel.text = "\(seconds + 1)\""
+        
+        // Update recording time and countdown warning in recordView
+        recordView?.updateRecordingTime(time, maxDuration: uiMaxDuration)
 
-        if time >= (uiMaxDuration - 4) && time <= uiMaxDuration {
-            let seconds = Int(uiMaxDuration - time)
-            /**
-             * The long type is cast here to eliminate compiler warnings.
-             * Here +1 is to round up and optimize the time logic.
-             */
-            recordView?.title.text = String(format: TUISwift.timCommonLocalizableString("TUIKitInputWillFinishRecordInSeconds"), seconds + 1)
-        } else if time > realMaxDuration {
+        if time > realMaxDuration {
             recorder.stop()
             let path = recorder.recordedFilePath
             recordView?.setStatus(.tooLong)
@@ -863,5 +903,79 @@ class TUIInputBar: UIView, UITextViewDelegate, TUIAudioRecorderDelegate, TUIResp
             delegate?.inputBarDidSendText(self, text: text)
             clearInput()
         }
+    }
+    
+    // MARK: - Voice to Text Methods
+    
+    private func handleCancelRecording() {
+        currentRecordingPath = nil
+        recorder.cancel()
+    }
+    
+    private func sendVoiceMessageDirectly() {
+        guard let path = currentRecordingPath else { return }
+        delegate?.inputBarDidSendVoice(self, path: path)
+        currentRecordingPath = nil
+    }
+    
+    private func startVoiceToTextConversion() {
+        guard let recordPath = currentRecordingPath else { return }
+        
+        // Don't hide recordView, instead enter text processing state
+        recordView?.enterTextProcessingState()
+        
+        // Setup callbacks for the three buttons
+        recordView?.onSendVoice = { [weak self] in
+            guard let self = self else { return }
+            // Send original voice
+            self.recordView?.hideWithAnimation {
+                self.recordView?.removeFromSuperview()
+                self.recordView = nil
+            }
+            self.sendVoiceMessageDirectly()
+        }
+        
+        recordView?.onSendText = { [weak self] in
+            guard let self = self else { return }
+            // Send converted text
+            let text = self.recordView?.getConvertedText() ?? ""
+            self.recordView?.hideWithAnimation {
+                self.recordView?.removeFromSuperview()
+                self.recordView = nil
+            }
+            // Send text message
+            if !text.isEmpty {
+                self.delegate?.inputBarDidSendText(self, text: text)
+            }
+        }
+        
+        recordView?.onCancelSend = { [weak self] in
+            guard let self = self else { return }
+            // Cancel - just hide and cleanup
+            self.recordView?.hideWithAnimation {
+                self.recordView?.removeFromSuperview()
+                self.recordView = nil
+            }
+            self.currentRecordingPath = nil
+        }
+        
+        // Use TUIAIMediaProcessManager for voice to text conversion
+        TUIAIMediaProcessManager.shared.processVoiceToText(
+            filePath: recordPath,
+            progressCallback: nil,
+            completion: { [weak self] result in
+                guard let self = self else { return }
+                DispatchQueue.main.async {
+                    switch result {
+                    case .success(let text):
+                        self.recordView?.setConvertLocalVoiceToTextState(.success, text: text)
+                        print(" Voice to text successful: \(text)")
+                    case .failure(let error):
+                        self.recordView?.setConvertLocalVoiceToTextState(.failure, error: error)
+                        print(" Voice to text failed: \(error.localizedDescription)")
+                    }
+                }
+            }
+        )
     }
 }

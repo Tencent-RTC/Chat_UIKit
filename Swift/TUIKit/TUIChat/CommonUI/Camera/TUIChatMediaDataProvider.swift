@@ -622,7 +622,7 @@ class TUIChatMediaDataProvider: NSObject, PHPickerViewControllerDelegate, UINavi
             completion(flag, newUrl)
         })
     }
-    
+
     private func originURL(with asset: PHAsset, completion: @escaping (Bool, URL?) -> Void) {
         let resources = PHAssetResource.assetResources(for: asset)
         guard !resources.isEmpty else {
@@ -632,27 +632,59 @@ class TUIChatMediaDataProvider: NSObject, PHPickerViewControllerDelegate, UINavi
 
         let options = PHAssetResourceRequestOptions()
         options.isNetworkAccessAllowed = false
-        var invoked = false
+        let fileName = "temp.mp4"
+        let tempPath = NSTemporaryDirectory()
+        let filePath = tempPath + fileName
+
+        if FileManager.default.isDeletableFile(atPath: filePath) {
+            try? FileManager.default.removeItem(atPath: filePath)
+        }
+
+        FileManager.default.createFile(atPath: filePath, contents: nil, attributes: nil)
+        guard let fileHandle = FileHandle(forWritingAtPath: filePath) else {
+            try? FileManager.default.removeItem(atPath: filePath)
+            completion(false, nil)
+            return
+        }
+
+        let newUrl = URL(fileURLWithPath: filePath)
+        var hasError = false
+
         PHAssetResourceManager.default().requestData(for: resources.first!, options: options, dataReceivedHandler: { data in
-            if invoked {
+            guard !hasError else { return }
+
+            if data.isEmpty {
+                hasError = true
                 return
             }
-            invoked = true
-            if data.isEmpty {
+
+            if #available(iOS 13.4, *) {
+                do {
+                    try fileHandle.write(contentsOf: data)
+                } catch {
+                    hasError = true
+                }
+            } else {
+                fileHandle.write(data)
+            }
+        }, completionHandler: { error in
+            if #available(iOS 13.0, *) {
+                try? fileHandle.close()
+            } else {
+                fileHandle.closeFile()
+            }
+
+            if error != nil || hasError {
+                try? FileManager.default.removeItem(atPath: filePath)
                 completion(false, nil)
                 return
             }
-            let fileName = "temp.mp4"
-            let tempPath = NSTemporaryDirectory()
-            let filePath = tempPath + fileName
-            if FileManager.default.isDeletableFile(atPath: filePath) {
+
+            let flag = FileManager.default.fileExists(atPath: filePath)
+            if !flag {
                 try? FileManager.default.removeItem(atPath: filePath)
             }
-            let newUrl = URL(fileURLWithPath: filePath)
-            let flag = FileManager.default.createFile(atPath: filePath, contents: data, attributes: nil)
             completion(flag, newUrl)
-        }, completionHandler: { _ in
-            completion(false, nil)
         })
     }
 

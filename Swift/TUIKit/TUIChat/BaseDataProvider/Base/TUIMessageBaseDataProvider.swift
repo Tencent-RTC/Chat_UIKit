@@ -39,7 +39,7 @@ extension TUIMessageBaseDataProviderDataSource {
     func isDataSourceConsistent() -> Bool { return false }
 }
 
-class TUIMessageBaseDataProvider: NSObject, V2TIMAdvancedMsgListener, V2TIMGroupListener, TUIMessageProgressManagerDelegate {
+public class TUIMessageBaseDataProvider: NSObject, V2TIMAdvancedMsgListener, V2TIMGroupListener, TUIMessageProgressManagerDelegate {
     func onUploadProgress(msgID: String, progress: Int) {}
     func onDownloadProgress(msgID: String, progress: Int) {}
     func onMessageSendingResultChanged(type: TUIMessageSendingResultType, messageID: String) {}
@@ -114,7 +114,7 @@ class TUIMessageBaseDataProvider: NSObject, V2TIMAdvancedMsgListener, V2TIMGroup
     
     // MARK: - V2TIMAdvancedMsgListener
 
-    func onRecvNewMessage(msg: V2TIMMessage) {
+    public func onRecvNewMessage(msg: V2TIMMessage) {
         let uiMsgCellDataArray = self.transUIMsgFromIMMsg([msg])
         if uiMsgCellDataArray.isEmpty {
             return
@@ -207,7 +207,7 @@ class TUIMessageBaseDataProvider: NSObject, V2TIMAdvancedMsgListener, V2TIMGroup
         return msgCellDataArray
     }
     
-    func onRecvMessageReadReceipts(receiptList: [V2TIMMessageReceipt]) {
+    public func onRecvMessageReadReceipts(receiptList: [V2TIMMessageReceipt]) {
         if receiptList.isEmpty {
             print("group receipt data is empty, ignore")
             return
@@ -234,7 +234,7 @@ class TUIMessageBaseDataProvider: NSObject, V2TIMAdvancedMsgListener, V2TIMGroup
         }
     }
     
-    func onRecvMessageRevoked(msgID: String, operateUser: V2TIMUserFullInfo, reason: String?) {
+    public func onRecvMessageRevoked(msgID: String, operateUser: V2TIMUserFullInfo, reason: String?) {
         DispatchQueue.main.async {
             for uiMsg in self.uiMsgs {
                 if uiMsg.msgID == msgID {
@@ -262,7 +262,7 @@ class TUIMessageBaseDataProvider: NSObject, V2TIMAdvancedMsgListener, V2TIMGroup
         }
     }
     
-    func onRecvMessageModified(msg: V2TIMMessage) {
+    public func onRecvMessageModified(msg: V2TIMMessage) {
         for uiMsg in self.uiMsgs {
             if uiMsg.msgID == msg.msgID {
                 if uiMsg.customReloadCell(withNewMsg: msg) {
@@ -863,7 +863,7 @@ class TUIMessageBaseDataProvider: NSObject, V2TIMAdvancedMsgListener, V2TIMGroup
         })
     }
     
-    func onGroupMessagePinned(groupID: String?, message: V2TIMMessage, isPinned: Bool, opUser: V2TIMGroupMemberInfo) {
+    public func onGroupMessagePinned(groupID: String?, message: V2TIMMessage, isPinned: Bool, opUser: V2TIMGroupMemberInfo) {
         guard let groupID = groupID else { return }
         if groupID != conversationModel?.groupID {
             return
@@ -876,7 +876,7 @@ class TUIMessageBaseDataProvider: NSObject, V2TIMAdvancedMsgListener, V2TIMGroup
         self.pinGroupMessageChanged?(self.groupPinList)
     }
     
-    func onGroupInfoChanged(groupID: String?, changeInfoList: [V2TIMGroupChangeInfo]) {
+    public func onGroupInfoChanged(groupID: String?, changeInfoList: [V2TIMGroupChangeInfo]) {
         guard let groupID = groupID else { return }
         if groupID != self.conversationModel?.groupID {
             return
@@ -895,7 +895,7 @@ class TUIMessageBaseDataProvider: NSObject, V2TIMAdvancedMsgListener, V2TIMGroup
         }
     }
     
-    func onGrantAdministrator(groupID: String?, opUser: V2TIMGroupMemberInfo, memberList: [V2TIMGroupMemberInfo]) {
+    public func onGrantAdministrator(groupID: String?, opUser: V2TIMGroupMemberInfo, memberList: [V2TIMGroupMemberInfo]) {
         guard let groupID = groupID else { return }
         if groupID != self.conversationModel?.groupID {
             return
@@ -908,7 +908,7 @@ class TUIMessageBaseDataProvider: NSObject, V2TIMAdvancedMsgListener, V2TIMGroup
         }
     }
     
-    func onRevokeAdministrator(groupID: String?, opUser: V2TIMGroupMemberInfo?, memberList: [V2TIMGroupMemberInfo]) {
+    public func onRevokeAdministrator(groupID: String?, opUser: V2TIMGroupMemberInfo?, memberList: [V2TIMGroupMemberInfo]) {
         guard let groupID = groupID else { return }
         if groupID != self.conversationModel?.groupID {
             return

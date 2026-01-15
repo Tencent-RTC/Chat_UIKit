@@ -96,6 +96,9 @@ open class TUIMessageCellData: TUICommonCellData, TUIMessageCellDataDelegate {
     public var messageModifyReplies: [[String: Any]]?
     public var messageContainerAppendSize: CGSize = .zero
     public var bottomContainerSize: CGSize = .zero
+    public var topContainerSize: CGSize = .zero
+    /// Extra top offset for container when nameLabel is too long and would overlap with topContainer
+    public var topContainerInsetTop: CGFloat = 0
     public var placeHolder: TUIMessageCellData?
     @objc public dynamic var videoTranscodingProgress: CGFloat = 0.0
     public var additionalUserInfoResult: [String: TUIRelationUserModel] = [:]

@@ -1,6 +1,7 @@
 import Foundation
 import TIMCommon
 import TUICore
+import TUIChat
 
 enum TUITranslationViewStatus: Int {
     case unknown = 0
@@ -15,6 +16,54 @@ typealias TUITranslateMessageCompletion = (Int, String, TUIMessageCellData, Int,
 class TUITranslationDataProvider: NSObject, TUINotificationProtocol, V2TIMAdvancedMsgListener {
     private static let kKeyTranslationText = "translation"
     private static let kKeyTranslationViewStatus = "translation_view_status"
+    private static let kKeyShouldHideOriginalText = "translation_hide_original"
+    private static let kKeyUserRequestedShowOriginal = "translation_user_show_original"
+    
+    static let shared = TUITranslationDataProvider()
+    
+    override private init() {
+        super.init()
+        registerMessageListener()
+    }
+    
+    private func registerMessageListener() {
+        V2TIMManager.sharedInstance().addAdvancedMsgListener(listener: self)
+    }
+    
+    deinit {
+        V2TIMManager.sharedInstance().removeAdvancedMsgListener(listener: self)
+    }
+    
+    // MARK: - V2TIMAdvancedMsgListener
+    
+    func onRecvNewMessage(msg: V2TIMMessage) {
+        guard TUITranslationConfig.shared.autoTranslateEnabled,
+              msg.elemType == .ELEM_TYPE_TEXT,
+              !msg.isSelf else {
+            return
+        }
+        
+        // Auto translate received message after a short delay to ensure UI is ready
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            self?.autoTranslateReceivedMessage(msg)
+        }
+    }
+    
+    private func autoTranslateReceivedMessage(_ message: V2TIMMessage) {
+        // Create a temporary cellData for translation
+        let cellData = TUIMessageCellData(direction: TMsgDirection.incoming)
+
+        cellData.innerMessage = message
+        
+        TUITranslationDataProvider.translateMessage(cellData) { _, _, _, _, _ in
+            // Notify UI to refresh the translation view
+            let param: [String: Any] = ["TUICore_TUIPluginNotify_DidChangePluginViewSubKey_Data": cellData]
+            TUICore.notifyEvent("TUICore_TUIPluginNotify",
+                                subKey: "TUICore_TUIPluginNotify_DidChangePluginViewSubKey",
+                                object: nil,
+                                param: param)
+        }
+    }
     
     // MARK: - Public
 
@@ -89,6 +138,7 @@ class TUITranslationDataProvider: NSObject, TUINotificationProtocol, V2TIMAdvanc
         
         if let translatedText = translatedText, !translatedText.isEmpty {
             saveTranslationResult(msg, text: translatedText, status: .shown)
+            
             completion?(0, "", data, TUITranslationViewStatus.shown.rawValue, translatedText)
         } else {
             saveTranslationResult(msg, text: "", status: .loading)
@@ -114,6 +164,7 @@ class TUITranslationDataProvider: NSObject, TUINotificationProtocol, V2TIMAdvanc
                                                       index: splitResult?[String.kSplitStringTextIndexKey] as? [Int] ?? [],
                                                       replaceDict: result) ?? ""
             saveTranslationResult(msg, text: text, status: .shown)
+            
             completion?(0, "", data, TUITranslationViewStatus.shown.rawValue, text)
         })
     }
@@ -157,5 +208,39 @@ class TUITranslationDataProvider: NSObject, TUINotificationProtocol, V2TIMAdvanc
         let dict = TUITool.jsonData2Dictionary(localCustomData) as? [String: Any]
         let status = dict?[kKeyTranslationViewStatus] as? Int ?? TUITranslationViewStatus.unknown.rawValue
         return TUITranslationViewStatus(rawValue: status) ?? .unknown
+    }
+    
+    // MARK: - Original Text Visibility Control
+    
+    /// Get whether original text should be hidden from localCustomData
+    static func shouldHideOriginalText(_ message: V2TIMMessage) -> Bool {
+        guard let localCustomData = message.localCustomData, !localCustomData.isEmpty else { return false }
+        let dict = TUITool.jsonData2Dictionary(localCustomData) as? [String: Any]
+        return dict?[kKeyShouldHideOriginalText] as? Bool ?? false
+    }
+    
+    /// Save shouldHideOriginalText to localCustomData
+    static func setShouldHideOriginalText(_ shouldHide: Bool, for message: V2TIMMessage) {
+        saveToLocalCustomData(ofMessage: message, key: kKeyShouldHideOriginalText, value: shouldHide)
+    }
+    
+    /// Get whether user manually requested to show original text from localCustomData
+    static func userRequestedShowOriginal(_ message: V2TIMMessage) -> Bool {
+        guard let localCustomData = message.localCustomData, !localCustomData.isEmpty else { return false }
+        let dict = TUITool.jsonData2Dictionary(localCustomData) as? [String: Any]
+        return dict?[kKeyUserRequestedShowOriginal] as? Bool ?? false
+    }
+    
+    /// Save userRequestedShowOriginal to localCustomData
+    static func setUserRequestedShowOriginal(_ requested: Bool, for message: V2TIMMessage) {
+        saveToLocalCustomData(ofMessage: message, key: kKeyUserRequestedShowOriginal, value: requested)
+    }
+    
+    /// Clear visibility state when hiding translation
+    static func clearVisibilityState(_ message: V2TIMMessage) {
+        var dict = TUITool.jsonData2Dictionary(message.localCustomData) as? [String: Any] ?? [:]
+        dict.removeValue(forKey: kKeyShouldHideOriginalText)
+        dict.removeValue(forKey: kKeyUserRequestedShowOriginal)
+        message.localCustomData = TUITool.dictionary2JsonData(dict)
     }
 }

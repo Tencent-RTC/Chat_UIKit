@@ -2,34 +2,27 @@ import AVFoundation
 import Foundation
 import TIMCommon
 
-enum TUIVoiceAudioPlaybackStyle: UInt {
-    case loudspeaker = 1
-    case handset = 2
-}
+public class TUIVoiceMessageCellData: TUIBubbleMessageCellData {
+    public var path: String?
+    public var uuid: String?
+    public var duration: Int = 0
+    public var length: Int = 0
+    public var isDownloading: Bool = false
+    @objc public dynamic var isPlaying: Bool = false
+    public var voiceHeight: CGFloat = 21.0
+    @objc public dynamic var currentTime: TimeInterval = 0.0
+    public var voiceAnimationImages: [UIImage] = []
+    public var voiceImage: UIImage?
+    public var voiceTop: CGFloat = 12.0
 
-class TUIVoiceMessageCellData: TUIBubbleMessageCellData, AVAudioPlayerDelegate {
-    var path: String?
-    var uuid: String?
-    var duration: Int = 0
-    var length: Int = 0
-    var isDownloading: Bool = false
-    @objc dynamic var isPlaying: Bool = false
-    var voiceHeight: CGFloat = 21.0
-    @objc dynamic var currentTime: TimeInterval = 0.0
-    var voiceAnimationImages: [UIImage] = []
-    var voiceImage: UIImage?
-    var voiceTop: CGFloat = 12.0
-
-    private var audioPlayer: AVAudioPlayer?
     private var wavPath: String?
-    private var timer: Timer?
 
-    static var incommingVoiceTop: CGFloat = 12.0
-    static var outgoingVoiceTop: CGFloat = 12.0
+    public static var incommingVoiceTop: CGFloat = 12.0
+    public static var outgoingVoiceTop: CGFloat = 12.0
 
-    var audioPlayerDidFinishPlayingBlock: (() -> Void)?
+    public var audioPlayerDidFinishPlayingBlock: (() -> Void)?
 
-    override class func getCellData(message: V2TIMMessage) -> TUIMessageCellData {
+    public override class func getCellData(message: V2TIMMessage) -> TUIMessageCellData {
         guard let elem = message.soundElem else {
             return TUIVoiceMessageCellData(direction: .incoming)
         }
@@ -44,20 +37,36 @@ class TUIVoiceMessageCellData: TUIBubbleMessageCellData, AVAudioPlayerDelegate {
         return soundData
     }
 
-    override class func getDisplayString(message: V2TIMMessage) -> String {
+    public override class func getDisplayString(message: V2TIMMessage) -> String {
         return TUISwift.timCommonLocalizableString("TUIKitMessageTypeVoice")
     }
 
-    override func getReplyQuoteViewDataClass() -> AnyClass? {
+    public override func getReplyQuoteViewDataClass() -> AnyClass? {
         return NSClassFromString("TUIChat.TUIVoiceReplyQuoteViewData")
     }
 
-    override func getReplyQuoteViewClass() -> AnyClass? {
+    public override func getReplyQuoteViewClass() -> AnyClass? {
         return NSClassFromString("TUIChat.TUIVoiceReplyQuoteView")
     }
 
-    override init(direction: TMsgDirection) {
+    public override init(direction: TMsgDirection) {
         super.init(direction: direction)
+        
+        // Listen for stop audio notification
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(onStopAllAudioPlayback),
+            name: .TUIStopAllAudioPlayback,
+            object: nil
+        )
+        
+        // Listen for progress updates
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(onProgressUpdate(_:)),
+            name: Notification.Name("TUIAudioPlaybackProgressChanged"),
+            object: nil
+        )
 
         if direction == .incoming {
             self.cellLayout = TUIMessageCellLayout.incomingVoiceMessageLayout
@@ -127,7 +136,10 @@ class TUIVoiceMessageCellData: TUIBubbleMessageCellData, AVAudioPlayerDelegate {
             innerMessage?.localCustomInt = 1
         }
 
-        guard let imSound = getIMSoundElem() else { return }
+        guard let imSound = getIMSoundElem() else {
+            stopVoiceMessage()
+            return
+        }
         var isExist = false
         if uuid == nil || uuid!.isEmpty {
             uuid = imSound.uuid
@@ -157,79 +169,81 @@ class TUIVoiceMessageCellData: TUIBubbleMessageCellData, AVAudioPlayerDelegate {
 
     private func playInternal(path: String) {
         guard isPlaying else { return }
-
-        let playbackStyle = TUIVoiceMessageCellData.getAudioplaybackStyle()
-        if playbackStyle == .handset {
-            try? AVAudioSession.sharedInstance().setCategory(.playAndRecord)
-        } else {
-            try? AVAudioSession.sharedInstance().setCategory(.playback)
+        guard let msgID = innerMessage?.msgID else {
+            stopVoiceMessage()
+            return
         }
-
-        let url = URL(fileURLWithPath: path)
-        audioPlayer = try? AVAudioPlayer(contentsOf: url)
-        audioPlayer?.delegate = self
-        let result = audioPlayer?.play() ?? false
-        if !result {
-            if let pathWithoutExtension = URL(string: path)?.deletingPathExtension().path {
-                wavPath = pathWithoutExtension + ".wav"
+        
+        // Use centralized audio manager
+        TUIAudioPlaybackManager.shared.playAudio(
+            fromPath: path,
+            msgID: msgID,
+            stateCallback: { [weak self] playing in
+                DispatchQueue.main.async {
+                    if !playing {
+                        self?.isPlaying = false
+                    }
+                }
+            },
+            finishCallback: { [weak self] in
+                DispatchQueue.main.async {
+                    self?.onPlaybackFinished()
+                }
             }
-            if let path = wavPath {
-                let url = URL(fileURLWithPath: path)
-                audioPlayer?.stop()
-                audioPlayer = try? AVAudioPlayer(contentsOf: url)
-                audioPlayer?.delegate = self
-                audioPlayer?.play()
-            }
-        }
-
-        if #available(iOS 10.0, *) {
-            timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-                self?.updateProgress()
-            }
-        }
+        )
     }
-
-    static func getAudioplaybackStyle() -> TUIVoiceAudioPlaybackStyle {
-        let style = UserDefaults.standard.string(forKey: "tui_audioPlaybackStyle")
-        if style == "1" {
-            return .loudspeaker
-        } else if style == "2" {
-            return .handset
-        }
-        return .loudspeaker
-    }
-
-    static func changeAudioPlaybackStyle() {
-        let style = getAudioplaybackStyle()
-        if style == .loudspeaker {
-            UserDefaults.standard.set("2", forKey: "tui_audioPlaybackStyle")
-        } else {
-            UserDefaults.standard.set("1", forKey: "tui_audioPlaybackStyle")
-        }
-        UserDefaults.standard.synchronize()
-    }
-
-    private func updateProgress() {
-        DispatchQueue.main.async { [weak self] in
-            self?.currentTime = self?.audioPlayer?.currentTime ?? 0
-        }
-    }
-
-    func stopVoiceMessage() {
-        if audioPlayer?.isPlaying == true {
-            audioPlayer?.stop()
-            audioPlayer = nil
-        }
-        timer?.invalidate()
-        timer = nil
+    
+    private func onPlaybackFinished() {
         isPlaying = false
-    }
-
-    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        stopVoiceMessage()
         if let wavPath = wavPath {
             try? FileManager.default.removeItem(atPath: wavPath)
         }
         audioPlayerDidFinishPlayingBlock?()
+    }
+    
+    @objc private func onProgressUpdate(_ notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let msgID = userInfo["msgID"] as? String,
+              msgID == innerMessage?.msgID,
+              let time = userInfo["currentTime"] as? TimeInterval else {
+            return
+        }
+        DispatchQueue.main.async { [weak self] in
+            self?.currentTime = time
+        }
+    }
+
+    static func getAudioplaybackStyle() -> TUIAudioPlaybackStyle {
+        return TUIAudioPlaybackManager.getAudioPlaybackStyle()
+    }
+
+    static func changeAudioPlaybackStyle() {
+        TUIAudioPlaybackManager.toggleAudioPlaybackStyle()
+    }
+    
+    /// Handle stop all audio notification
+    @objc private func onStopAllAudioPlayback(_ notification: Notification) {
+        // Don't stop if we triggered the notification via TUIAudioPlaybackManager
+        if notification.object is TUIAudioPlaybackManager {
+            // Check if this is our message
+            guard let msgID = innerMessage?.msgID,
+                  TUIAudioPlaybackManager.shared.currentPlayingMsgID != msgID else {
+                return
+            }
+        }
+        if isPlaying {
+            isPlaying = false
+        }
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    func stopVoiceMessage() {
+        if let msgID = innerMessage?.msgID {
+            TUIAudioPlaybackManager.shared.stopAudio(forMsgID: msgID)
+        }
+        isPlaying = false
     }
 }

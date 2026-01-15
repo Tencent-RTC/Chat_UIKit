@@ -22,6 +22,29 @@ public class TUIC2CChatViewController: TUIBaseChatViewController {
         }
     }
 
+    override public func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        // Notify plugins about chat view will appear (for restoring state after returning from sub-pages)
+        if let userID = conversationData?.userID {
+            let param: [String: Any] = ["TUICore_TUIChatNotify_ChatVC_ViewWillAppearSubKey_UserID": userID]
+            TUICore.notifyEvent("TUICore_TUIChatNotify",
+                                subKey: "TUICore_TUIChatNotify_ChatVC_ViewWillAppearSubKey",
+                                object: nil,
+                                param: param)
+        }
+    }
+
+    override public func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+
+        // Notify plugins about chat view will disappear
+        TUICore.notifyEvent("TUICore_TUIChatNotify",
+                            subKey: "TUICore_TUIChatNotify_ChatVC_ViewWillDisappearSubKey",
+                            object: nil,
+                            param: nil)
+    }
+
     // Override Methods
 
     override func inputControllerDidInputAt(_ inputController: TUIInputController) {

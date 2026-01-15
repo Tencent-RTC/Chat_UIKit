@@ -60,6 +60,12 @@ public class TUIReferenceMessageCell: TUIBubbleMessageCell, UITextViewDelegate, 
         contentView.addSubview(quoteView)
         bottomContainer = UIView()
         contentView.addSubview(bottomContainer)
+
+        // Setup topContainer 
+        topContainer = TUIPassthroughView()
+        topContainer.isUserInteractionEnabled = true
+        topContainer.clipsToBounds = false
+        contentView.addSubview(topContainer)
     }
 
     override open func fill(with data: TUICommonCellData) {
@@ -93,6 +99,17 @@ public class TUIReferenceMessageCell: TUIBubbleMessageCell, UITextViewDelegate, 
         guard let referenceData = referenceData else { return }
         let param: [String: Any] = ["TUICore_TUIChatExtension_BottomContainer_CellData": referenceData]
         TUICore.raiseExtension("TUICore_TUIChatExtension_BottomContainer_ClassicExtensionID", parentView: bottomContainer ?? UIView(), param: param)
+    }
+
+    override public func notifyTopContainerReady(of cellData: TUIMessageCellData?) {
+        guard let referenceData = referenceData else { return }
+        let param: [String: Any] = ["TUICore_TUIChatExtension_TopContainer_CellData": referenceData]
+        let hasExtension = TUICore.raiseExtension("TUICore_TUIChatExtension_TopContainer_ClassicExtensionID", parentView: topContainer, param: param)
+        topContainer.isHidden = !hasExtension
+
+        if hasExtension {
+            layoutTopContainer()
+        }
     }
 
     func updateUI(with referenceData: TUIReferenceMessageCellData?) {
@@ -254,6 +271,25 @@ public class TUIReferenceMessageCell: TUIBubbleMessageCell, UITextViewDelegate, 
         super.updateConstraints()
         updateUI(with: referenceData)
         layoutBottomContainer()
+        layoutTopContainer()
+    }
+
+    private func layoutTopContainer() {
+        guard !topContainer.isHidden else { return }
+        guard let referenceData = referenceData else { return }
+
+        let topContainerSize = referenceData.topContainerSize
+        guard topContainerSize.width > 0 && topContainerSize.height > 0 else {
+            topContainer.isHidden = true
+            return
+        }
+
+        // Position topContainer at top-right corner of bubbleView
+        topContainer.snp.remakeConstraints { make in
+            make.trailing.equalTo(bubbleView.snp.trailing)
+            make.centerY.equalTo(bubbleView.snp.top)
+            make.size.equalTo(topContainerSize)
+        }
     }
 
     private func layoutBottomContainer() {

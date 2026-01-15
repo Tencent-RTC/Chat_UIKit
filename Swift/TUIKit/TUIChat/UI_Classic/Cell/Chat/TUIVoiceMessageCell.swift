@@ -81,8 +81,11 @@ class TUIVoiceMessageCell: TUIBubbleMessageCell {
             securityStrikeView.textLabel.text = TUISwift.timCommonLocalizableString("TUIKitMessageTypeSecurityStrikeVoice")
         }
 
-        if voiceData?.innerMessage?.localCustomInt == 0 && voiceData?.direction == .incoming {
-            voiceReadPoint.isHidden = false
+        // Show unread point only for incoming messages that haven't been played
+        if voiceData?.direction == .incoming {
+            voiceReadPoint.isHidden = (voiceData?.innerMessage?.localCustomInt ?? 0) != 0
+        } else {
+            voiceReadPoint.isHidden = true
         }
 
         isPlayingObservation = voiceData?.observe(\.isPlaying, options: [.new, .initial]) { [weak self] _, change in

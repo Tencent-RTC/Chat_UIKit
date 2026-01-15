@@ -3,11 +3,35 @@ import TUICore
 
 class TUIVoiceToTextConfig: NSObject {
     static let kVoiceToTextTargetLanguageCode = "voice_to_text_target_language_code"
+    static let kAutoPlayVoiceEnabled = "auto_play_voice_enabled"
+    static let kAutoVoiceToTextEnabled = "auto_voice_to_text_enabled"
     
     static let shared: TUIVoiceToTextConfig = {
         let instance = TUIVoiceToTextConfig()
         return instance
     }()
+    
+    /**
+     * 自动播放语音
+     * Auto play voice messages.
+     */
+    var autoPlayVoiceEnabled: Bool = false {
+        didSet {
+            UserDefaults.standard.set(autoPlayVoiceEnabled, forKey: TUIVoiceToTextConfig.kAutoPlayVoiceEnabled)
+            UserDefaults.standard.synchronize()
+        }
+    }
+    
+    /**
+     * 语音消息自动转文字
+     * Auto convert voice messages to text.
+     */
+    var autoVoiceToTextEnabled: Bool = false {
+        didSet {
+            UserDefaults.standard.set(autoVoiceToTextEnabled, forKey: TUIVoiceToTextConfig.kAutoVoiceToTextEnabled)
+            UserDefaults.standard.synchronize()
+        }
+    }
     
     /**
      * 识别目标语言码
@@ -31,10 +55,15 @@ class TUIVoiceToTextConfig: NSObject {
     
     override init() {
         super.init()
-        loadSavedLanguage()
+        loadSavedSettings()
     }
     
-    private func loadSavedLanguage() {
+    private func loadSavedSettings() {
+        // Load voice settings
+        autoPlayVoiceEnabled = UserDefaults.standard.bool(forKey: TUIVoiceToTextConfig.kAutoPlayVoiceEnabled)
+        autoVoiceToTextEnabled = UserDefaults.standard.bool(forKey: TUIVoiceToTextConfig.kAutoVoiceToTextEnabled)
+        
+        // Load language settings
         if let lang = UserDefaults.standard.string(forKey: TUIVoiceToTextConfig.kVoiceToTextTargetLanguageCode), !lang.isEmpty {
             targetLanguageCode = lang
         } else {

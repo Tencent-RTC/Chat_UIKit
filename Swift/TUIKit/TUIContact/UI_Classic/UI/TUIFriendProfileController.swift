@@ -8,9 +8,10 @@
 
 import ImSDK_Plus
 import TIMCommon
+import TUICore
 import UIKit
 
-public class TUIFriendProfileController: UITableViewController, TUIContactProfileCardDelegate {
+public class TUIFriendProfileController: UITableViewController, TUIContactProfileCardDelegate, TUINotificationProtocol {
     var friendProfile: V2TIMFriendInfo?
     private var dataList: [[Any]] = []
     private var modified = false
@@ -25,6 +26,7 @@ public class TUIFriendProfileController: UITableViewController, TUIContactProfil
 
     deinit {
         textValueObservation = nil
+        NotificationCenter.default.removeObserver(self)
     }
 
     @available(*, unavailable)
@@ -51,6 +53,13 @@ public class TUIFriendProfileController: UITableViewController, TUIContactProfil
         titleView?.setTitle(TUISwift.timCommonLocalizableString("ProfileDetails"))
         navigationItem.titleView = titleView
         navigationItem.title = ""
+        
+        // Register unified voice message settings reload notification
+        TUICore.registerEvent(
+            "TUICore_TUIVoiceMessageNotify",
+            subKey: "TUICore_TUIVoiceMessageNotify_ReloadDataSubKey",
+            object: self
+        )
 
         loadData()
     }
@@ -91,6 +100,35 @@ public class TUIFriendProfileController: UITableViewController, TUIContactProfil
                 }())
                 return inlist
             }())
+        }
+        
+        // Voice message settings section 
+        if let userID = friendProfile?.userID {
+            let extensionParam: [String: Any] = ["userID": userID]
+            let extensionList = TUICore.getExtensionList(
+                "TUICore_TUIContactExtension_FriendProfileSettingsSwitch_ClassicExtensionID",
+                param: extensionParam
+            )
+            
+            if !extensionList.isEmpty {
+                var voiceSettingsArray: [Any] = []
+                for info in extensionList {
+                    if let infoData = info.data,
+                       let displayValue = infoData["displayValue"] as? String {
+                        let textData = TUICommonContactTextCellData()
+                        textData.key = info.text ?? ""
+                        textData.value = displayValue
+                        textData.showAccessory = true
+                        textData.cselector = #selector(onVoiceSettingClicked(_:))
+                        textData.reuseId = "TextCell"
+                        textData.tui_extValueObj = info
+                        voiceSettingsArray.append(textData)
+                    }
+                }
+                if !voiceSettingsArray.isEmpty {
+                    list.append(voiceSettingsArray)
+                }
+            }
         }
 
         if isItemShown(.muteAndPin) {
@@ -489,6 +527,27 @@ public class TUIFriendProfileController: UITableViewController, TUIContactProfil
             })
         }
     }
+    
+    @objc private func onVoiceSettingClicked(_ cell: TUICommonContactTextCell) {
+        guard let extensionInfo = cell.textData?.tui_extValueObj as? TUIExtensionInfo,
+              let onClicked = extensionInfo.onClicked
+        else { return }
+        
+        onClicked([
+            "viewController": self,
+            "pushVC": navigationController as Any
+        ])
+    }
+    
+    @objc private func onExtensionSwitchChanged(_ cell: TUICommonContactSwitchCell) {
+        guard let extensionInfo = cell.switchData?.tui_extValueObj as? TUIExtensionInfo,
+              let onClicked = extensionInfo.onClicked
+        else { return }
+        
+        var param: [String: Any] = [:]
+        param["isOn"] = cell.switcher.isOn
+        onClicked(param)
+    }
 
     private func addLongPressGesture() {
         let longPress = UILongPressGestureRecognizer(target: self, action: #selector(didLongPressAtCell(_:)))
@@ -527,5 +586,14 @@ public class TUIFriendProfileController: UITableViewController, TUIContactProfil
 
     static func isMarkedByHideType(_ markList: [NSNumber]) -> Bool {
         return markList.contains { $0.uintValue == V2TIMConversationMarkType.CONVERSATION_MARK_TYPE_HIDE.rawValue }
+    }
+    
+    // MARK: - TUINotificationProtocol
+    
+    public func onNotifyEvent(_ key: String, subKey: String, object anObject: Any?, param: [AnyHashable: Any]?) {
+        if key == "TUICore_TUIVoiceMessageNotify",
+           subKey == "TUICore_TUIVoiceMessageNotify_ReloadDataSubKey" {
+            loadData()
+        }
     }
 }

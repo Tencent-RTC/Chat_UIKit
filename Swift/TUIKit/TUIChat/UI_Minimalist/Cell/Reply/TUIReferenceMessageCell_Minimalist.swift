@@ -61,6 +61,21 @@ public class TUIReferenceMessageCell_Minimalist: TUIBubbleMessageCell_Minimalist
         contentView.addSubview(quoteView)
         bottomContainer = UIView()
         contentView.addSubview(bottomContainer)
+
+        topContainer = UIView()
+        topContainer.isUserInteractionEnabled = true
+        contentView.addSubview(topContainer)
+    }
+
+    override public func notifyTopContainerReady(of cellData: TUIMessageCellData?) {
+        guard let referenceData = referenceData else { return }
+        let param: [String: Any] = ["TUICore_TUIChatExtension_TopContainer_CellData": referenceData]
+        let hasExtension = TUICore.raiseExtension("TUICore_TUIChatExtension_TopContainer_MinimalistExtensionID", parentView: topContainer, param: param)
+        topContainer.isHidden = !hasExtension
+
+        if hasExtension {
+            layoutTopContainer()
+        }
     }
 
     override public func fill(with data: TUICommonCellData) {
@@ -253,6 +268,25 @@ public class TUIReferenceMessageCell_Minimalist: TUIBubbleMessageCell_Minimalist
         super.updateConstraints()
         updateUI(with: referenceData)
         layoutBottomContainer()
+        layoutTopContainer()
+    }
+
+    private func layoutTopContainer() {
+        guard !topContainer.isHidden else { return }
+        guard let referenceData = referenceData else { return }
+
+        let topContainerSize = referenceData.topContainerSize
+        guard topContainerSize.width > 0 && topContainerSize.height > 0 else {
+            topContainer.isHidden = true
+            return
+        }
+
+        // Position topContainer at top-right corner of bubbleView
+        topContainer.snp.remakeConstraints { make in
+            make.trailing.equalTo(bubbleView.snp.trailing)
+            make.centerY.equalTo(bubbleView.snp.top)
+            make.size.equalTo(topContainerSize)
+        }
     }
 
     private func layoutBottomContainer() {

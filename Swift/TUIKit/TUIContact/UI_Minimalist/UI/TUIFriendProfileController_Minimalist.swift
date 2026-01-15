@@ -2,9 +2,10 @@
 //  TUIContact
 
 import TIMCommon
+import TUICore
 import UIKit
 
-class TUIFriendProfileController_Minimalist: UIViewController, UITableViewDelegate, UITableViewDataSource, TUIFloatSubViewControllerProtocol {
+class TUIFriendProfileController_Minimalist: UIViewController, UITableViewDelegate, UITableViewDataSource, TUIFloatSubViewControllerProtocol, TUINotificationProtocol {
     var floatDataSourceChanged: (([Any]) -> Void)?
     
     var friendProfile: V2TIMFriendInfo?
@@ -45,6 +46,7 @@ class TUIFriendProfileController_Minimalist: UIViewController, UITableViewDelega
 
     deinit {
         textValueObservation = nil
+        NotificationCenter.default.removeObserver(self)
     }
 
     override func viewDidLoad() {
@@ -67,6 +69,13 @@ class TUIFriendProfileController_Minimalist: UIViewController, UITableViewDelega
         navigationItem.title = ""
 
         userFullInfo = friendProfile?.userFullInfo
+        
+        // Register unified voice message settings reload notification
+        TUICore.registerEvent(
+            "TUICore_TUIVoiceMessageNotify",
+            subKey: "TUICore_TUIVoiceMessageNotify_ReloadDataSubKey",
+            object: self
+        )
 
         setupHeaderViewData()
         loadData()
@@ -141,6 +150,35 @@ class TUIFriendProfileController_Minimalist: UIViewController, UITableViewDelega
                 data.reuseId = "TextCell"
                 return data
             }()])
+        }
+        
+        // Voice message settings section
+        if let userID = friendProfile?.userID {
+            let extensionParam: [String: Any] = ["userID": userID]
+            let extensionList = TUICore.getExtensionList(
+                "TUICore_TUIContactExtension_FriendProfileSettingsSwitch_MinimalistExtensionID",
+                param: extensionParam
+            )
+            
+            if !extensionList.isEmpty {
+                var voiceSettingsArray: [Any] = []
+                for info in extensionList {
+                    if let infoData = info.data,
+                       let displayValue = infoData["displayValue"] as? String {
+                        let textData = TUICommonContactTextCellData_Minimalist()
+                        textData.key = info.text ?? ""
+                        textData.value = displayValue
+                        textData.showAccessory = true
+                        textData.cselector = #selector(onVoiceSettingClicked(_:))
+                        textData.reuseId = "TextCell"
+                        textData.tui_extValueObj = info
+                        voiceSettingsArray.append(textData)
+                    }
+                }
+                if !voiceSettingsArray.isEmpty {
+                    list.append(voiceSettingsArray)
+                }
+            }
         }
 
         if !TUIContactConfig.shared.isItemHiddenInContactConfig(.muteAndPin) {
@@ -480,6 +518,17 @@ class TUIFriendProfileController_Minimalist: UIViewController, UITableViewDelega
             })
         }
     }
+    
+    @objc private func onVoiceSettingClicked(_ cell: TUICommonContactTextCell_Minimalist) {
+        guard let extensionInfo = cell.data?.tui_extValueObj as? TUIExtensionInfo,
+              let onClicked = extensionInfo.onClicked
+        else { return }
+        
+        onClicked([
+            "viewController": self,
+            "pushVC": navigationController as Any
+        ])
+    }
 
     private func addLongPressGesture() {
         let longPress = UILongPressGestureRecognizer(target: self, action: #selector(didLongPressAtCell(_:)))
@@ -513,5 +562,14 @@ class TUIFriendProfileController_Minimalist: UIViewController, UITableViewDelega
 
     static func isMarkedByHideType(_ markList: [NSNumber]) -> Bool {
         return markList.contains { $0.uintValue == V2TIMConversationMarkType.CONVERSATION_MARK_TYPE_HIDE.rawValue }
+    }
+    
+    // MARK: - TUINotificationProtocol
+    
+    func onNotifyEvent(_ key: String, subKey: String, object anObject: Any?, param: [AnyHashable: Any]?) {
+        if key == "TUICore_TUIVoiceMessageNotify",
+           subKey == "TUICore_TUIVoiceMessageNotify_ReloadDataSubKey" {
+            loadData()
+        }
     }
 }

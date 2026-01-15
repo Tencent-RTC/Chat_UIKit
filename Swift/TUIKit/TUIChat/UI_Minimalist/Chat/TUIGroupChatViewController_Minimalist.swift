@@ -31,11 +31,39 @@ public class TUIGroupChatViewController_Minimalist: TUIBaseChatViewController_Mi
         setupGroupPinTips()
         V2TIMManager.sharedInstance().addGroupListener(listener: self)
         NotificationCenter.default.addObserver(self, selector: #selector(refreshTipsView), name: NSNotification.Name(rawValue: "TUICore_TUIChatExtension_ChatViewTopArea_ChangedNotification"), object: nil)
+
+        // Notify plugins about chat view loaded
+        if let groupID = conversationData?.groupID {
+            let param: [String: Any] = ["TUICore_TUIChatNotify_ChatVC_ViewDidLoadSubKey_GroupID": groupID]
+            TUICore.notifyEvent("TUICore_TUIChatNotify",
+                                subKey: "TUICore_TUIChatNotify_ChatVC_ViewDidLoadSubKey",
+                                object: nil,
+                                param: param)
+        }
     }
 
     override public func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         refreshTipsView()
+
+        // Notify plugins about chat view will appear (for restoring state after returning from sub-pages)
+        if let groupID = conversationData?.groupID {
+            let param: [String: Any] = ["TUICore_TUIChatNotify_ChatVC_ViewWillAppearSubKey_GroupID": groupID]
+            TUICore.notifyEvent("TUICore_TUIChatNotify",
+                                subKey: "TUICore_TUIChatNotify_ChatVC_ViewWillAppearSubKey",
+                                object: nil,
+                                param: param)
+        }
+    }
+
+    override public func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+
+        // Notify plugins about chat view will disappear
+        TUICore.notifyEvent("TUICore_TUIChatNotify",
+                            subKey: "TUICore_TUIChatNotify_ChatVC_ViewWillDisappearSubKey",
+                            object: nil,
+                            param: nil)
     }
 
     deinit {

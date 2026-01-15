@@ -42,6 +42,7 @@ open class TUIMessageCell: TUICommonTableViewCell, TUIMessageCellProtocol {
     public var readReceiptLabel = UILabel()
     public var timeLabel = UILabel()
     public var bottomContainer = UIView()
+    public var topContainer = UIView()
 
     public private(set) var messageData: TUIMessageCellData?
     public weak var delegate: TUIMessageCellDelegate?
@@ -312,6 +313,14 @@ open class TUIMessageCell: TUICommonTableViewCell, TUIMessageCellProtocol {
 
         avatarUrlObservation?.invalidate()
         avatarUrlObservation = nil
+        
+        // Remove all pending animations to prevent "falling" effect when cell is reused
+        // This is critical to fix the UI glitch where avatar/bubble slides from previous position
+        layer.removeAllAnimations()
+        contentView.layer.removeAllAnimations()
+        avatarView.layer.removeAllAnimations()
+        container.layer.removeAllAnimations()
+        nameLabel.layer.removeAllAnimations()
     }
 
     override open func fill(with data: TUICommonCellData) {
@@ -479,6 +488,10 @@ open class TUIMessageCell: TUICommonTableViewCell, TUIMessageCellProtocol {
     }
 
     open func notifyBottomContainerReady(of cellData: TUIMessageCellData?) {
+        // Override by subclass.
+    }
+
+    open func notifyTopContainerReady(of cellData: TUIMessageCellData?) {
         // Override by subclass.
     }
 

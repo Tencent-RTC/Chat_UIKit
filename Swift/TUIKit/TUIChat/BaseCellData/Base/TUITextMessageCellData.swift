@@ -2,21 +2,21 @@ import TIMCommon
 import TUICore
 import UIKit
 
-class TUITextMessageCellData: TUIBubbleMessageCellData {
-    var isAudioCall: Bool = false
-    var isVideoCall: Bool = false
-    var isCaller: Bool = false
-    var showUnreadPoint: Bool = false
+public class TUITextMessageCellData: TUIBubbleMessageCellData {
+    public var isAudioCall: Bool = false
+    public var isVideoCall: Bool = false
+    public var isCaller: Bool = false
+    public var showUnreadPoint: Bool = false
 
-    var emojiLocations: [[NSValue: NSAttributedString]]? = []
-    var textSize: CGSize = .zero
-    var textOrigin: CGPoint = .zero
+    public var emojiLocations: [[NSValue: NSAttributedString]]? = []
+    public var textSize: CGSize = .zero
+    public var textOrigin: CGPoint = .zero
 
     private var attributedString: NSMutableAttributedString?
     private var size: CGSize = .zero
     private var containerWidth: CGFloat = 0.0
 
-    var content: String = "" {
+    public var content: String = "" {
         didSet {
             if oldValue != content {
                 attributedString = nil
@@ -37,7 +37,7 @@ class TUITextMessageCellData: TUIBubbleMessageCellData {
         fatalError("init() has not been implemented")
     }
 
-    override class func getCellData(message: V2TIMMessage) -> TUIMessageCellData {
+    public override class func getCellData(message: V2TIMMessage) -> TUIMessageCellData {
         let textData = TUITextMessageCellData(direction: message.isSelf ? .outgoing : .incoming)
         if let textElem = message.textElem {
             textData.content = textElem.text ?? ""
@@ -47,18 +47,18 @@ class TUITextMessageCellData: TUIBubbleMessageCellData {
         return textData
     }
 
-    override class func getDisplayString(message: V2TIMMessage) -> String {
+    public override class func getDisplayString(message: V2TIMMessage) -> String {
         if let textElem = message.textElem, let text = textElem.text {
             return text.getLocalizableStringWithFaceContent()
         }
         return ""
     }
 
-    override func getReplyQuoteViewDataClass() -> AnyClass? {
+    public override func getReplyQuoteViewDataClass() -> AnyClass? {
         return NSClassFromString("TUIChat.TUITextReplyQuoteViewData")
     }
 
-    override func getReplyQuoteViewClass() -> AnyClass? {
+    public override func getReplyQuoteViewClass() -> AnyClass? {
         return NSClassFromString("TUIChat.TUITextReplyQuoteView")
     }
 

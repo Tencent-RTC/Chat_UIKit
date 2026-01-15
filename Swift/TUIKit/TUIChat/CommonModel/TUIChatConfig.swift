@@ -103,6 +103,7 @@ public class TUIChatConfig: NSObject {
     public var enablePopMenuDeleteAction = true
     public var enablePopMenuInfoAction = true
     public var enablePopMenuAudioPlaybackAction = true
+    public var enablePopMenuTextToVoiceAction = true
     public var enableTypingStatus = true
     public var enableMainPageInputBar = true
     public var backgroudColor: UIColor?
