@@ -139,7 +139,7 @@ class TUIMessageController: TUIBaseMessageController, TUIChatSmallTongueViewDele
                 tongue.parentView = view.superview
                 TUIChatSmallTongueManager.showTongue(tongue, delegate: self)
             }
-        } else if isInVC && tableView.contentSize.height - tableView.contentOffset.y >= 20 {
+        } else if isInVC && scrollView.isTracking && tableView.contentSize.height - tableView.contentOffset.y >= 20 {
             TUIChatSmallTongueManager.removeTongue(type: .someoneAt)
         } else {
             if !(indicatorView?.isAnimating ?? false) {
