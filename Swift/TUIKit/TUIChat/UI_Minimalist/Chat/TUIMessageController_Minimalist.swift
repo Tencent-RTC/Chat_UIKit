@@ -154,7 +154,7 @@ class TUIMessageController_Minimalist: TUIBaseMessageController_Minimalist, TUIC
                 tongue.parentView = view.superview
                 TUIChatSmallTongueManager_Minimalist.showTongue(tongue, delegate: self)
             }
-        } else if isInVC && tableView.contentSize.height - tableView.contentOffset.y >= 20 {
+        } else if isInVC && scrollView.isTracking && tableView.contentSize.height - tableView.contentOffset.y >= 20 {
             TUIChatSmallTongueManager_Minimalist.removeTongue(type: .someoneAt)
         } else {
             if !(indicatorView?.isAnimating ?? false) {
