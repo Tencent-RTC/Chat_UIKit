@@ -188,8 +188,7 @@ public class TUIRecordView: UIView {
         // Setup keyboard observers
         setupKeyboardObservers()
         
-        // Listen for theme changes
-        NotificationCenter.default.addObserver(self, selector: #selector(onThemeChanged), name: Notification.Name("TUIDidApplyingThemeChangedNotfication"), object: nil)
+        // Use system traitCollectionDidChange instead of TUIDidApplyingThemeChangedNotfication
     }
     
     /// Show with fade-in animation (should be called after addSubview)
@@ -814,9 +813,14 @@ public class TUIRecordView: UIView {
     
     // MARK: - Theme Support
     
-    @objc private func onThemeChanged() {
-        updateGradientColors()
-        applyThemeColors()
+    public override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if #available(iOS 13.0, *) {
+            if traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) {
+                updateGradientColors()
+                applyThemeColors()
+            }
+        }
     }
     
     /// Update gradient layer colors for dark mode support

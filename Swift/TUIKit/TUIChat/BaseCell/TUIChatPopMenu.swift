@@ -76,7 +76,7 @@ public class TUIChatPopMenu: UIView, UIGestureRecognizerDelegate, V2TIMAdvancedM
         NotificationCenter.default.addObserver(self, selector: #selector(hideWithAnimation), name:
             Notification.Name("kTUIChatPopMenuWillHideNotification"), object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(hideWithAnimation), name: UIResponder.keyboardWillChangeFrameNotification, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(onThemeChanged), name: NSNotification.Name("TUIDidApplyingThemeChangedNotfication"), object: nil)
+        // Use system traitCollectionDidChange instead of TUIDidApplyingThemeChangedNotfication
         V2TIMManager.sharedInstance().addAdvancedMsgListener(listener: self)
     }
     
@@ -119,8 +119,13 @@ public class TUIChatPopMenu: UIView, UIGestureRecognizerDelegate, V2TIMAdvancedM
         arrowLayer.fillColor = TUISwift.tuiChatDynamicColor("chat_pop_menu_bg_color", defaultColor: "#FFFFFF").cgColor
     }
     
-    @objc private func onThemeChanged() {
-        applyBorderTheme()
+    public override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if #available(iOS 13.0, *) {
+            if traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) {
+                applyBorderTheme()
+            }
+        }
     }
     
     // MARK: - Public

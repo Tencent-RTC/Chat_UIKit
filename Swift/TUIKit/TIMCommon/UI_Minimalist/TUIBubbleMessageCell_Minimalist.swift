@@ -139,7 +139,7 @@ extension TUIBubbleMessageCell_Minimalist {
     private static var _incommingAnimatedHighlightedAlpha50: UIImage?
     
     fileprivate static let setup: Void = {
-        NotificationCenter.default.addObserver(TUIBubbleMessageCell_Minimalist.self, selector: #selector(onThemeChanged(_:)), name: Notification.Name("TUIDidApplyingThemeChangedNotfication"), object: nil)
+        // Removed TUIDidApplyingThemeChangedNotfication observer, use dynamic images instead
     }()
         
     public static var outgoingBubble: UIImage? {

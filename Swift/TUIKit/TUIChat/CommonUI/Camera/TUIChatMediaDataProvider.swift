@@ -258,7 +258,7 @@ class TUIChatMediaDataProvider: NSObject, PHPickerViewControllerDelegate, UINavi
         _ = Int(urlAsset.duration.value) / Int(urlAsset.duration.timescale)
         let gen = AVAssetImageGenerator(asset: urlAsset)
         gen.appliesPreferredTrackTransform = true
-        gen.maximumSize = CGSize(width: 192, height: 192)
+        gen.maximumSize = CGSize(width: 1920, height: 1920)
         var actualTime = CMTime()
         let time = CMTimeMakeWithSeconds(0.5, preferredTimescale: 30)
         let imageRef = try? gen.copyCGImage(at: time, actualTime: &actualTime)
@@ -340,7 +340,7 @@ class TUIChatMediaDataProvider: NSObject, PHPickerViewControllerDelegate, UINavi
         _ = Int(urlAsset.duration.value) / Int(urlAsset.duration.timescale)
         let gen = AVAssetImageGenerator(asset: urlAsset)
         gen.appliesPreferredTrackTransform = true
-        gen.maximumSize = CGSize(width: 192, height: 192)
+        gen.maximumSize = CGSize(width: 1920, height: 1920)
         var _: NSError?
         var actualTime = CMTime()
         let time = CMTimeMakeWithSeconds(0.5, preferredTimescale: 30)
@@ -402,7 +402,7 @@ class TUIChatMediaDataProvider: NSObject, PHPickerViewControllerDelegate, UINavi
         let duration = Int(urlAsset.duration.value) / Int(urlAsset.duration.timescale)
         let gen = AVAssetImageGenerator(asset: urlAsset)
         gen.appliesPreferredTrackTransform = true
-        gen.maximumSize = CGSize(width: 192, height: 192)
+        gen.maximumSize = CGSize(width: 1920, height: 1920)
         var _: NSError?
         var actualTime = CMTime()
         let time = CMTimeMakeWithSeconds(0.5, preferredTimescale: 30)

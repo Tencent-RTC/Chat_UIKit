@@ -142,14 +142,14 @@ public class TUIConversationListController: UIViewController, UIGestureRecognize
         super.init(nibName: nibNameOrNil, bundle: nibBundleOrNil)
         self.isShowBanner = true
         self.isShowConversationGroup = true
-        NotificationCenter.default.addObserver(self, selector: #selector(onThemeChanged), name: NSNotification.Name("TUIDidApplyingThemeChangedNotfication"), object: nil)
+        // Use system traitCollectionDidChange instead of TUIDidApplyingThemeChangedNotfication
     }
 
     required init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
         self.isShowBanner = true
         self.isShowConversationGroup = true
-        NotificationCenter.default.addObserver(self, selector: #selector(onThemeChanged), name: NSNotification.Name("TUIDidApplyingThemeChangedNotfication"), object: nil)
+        // Use system traitCollectionDidChange instead of TUIDidApplyingThemeChangedNotfication
     }
 
     deinit {
@@ -159,8 +159,13 @@ public class TUIConversationListController: UIViewController, UIGestureRecognize
         actualShowConversationGroupObservation = nil
     }
 
-    @objc func onThemeChanged() {
-        groupAnimationView.layer.borderColor = TUISwift.tuiConversationDynamicColor("conversation_group_bg_color", defaultColor: "#EBECF0").cgColor
+    public override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if #available(iOS 13.0, *) {
+            if traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) {
+                groupAnimationView.layer.borderColor = TUISwift.tuiConversationDynamicColor("conversation_group_bg_color", defaultColor: "#EBECF0").cgColor
+            }
+        }
     }
 
     override public func viewDidLoad() {

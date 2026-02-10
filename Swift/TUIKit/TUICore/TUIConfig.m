@@ -27,19 +27,13 @@
     self = [super init];
     if (self) {
         _avatarCornerRadius = 5.f;
-        _defaultAvatarImage = TUICoreBundleThemeImage(@"default_c2c_head_img", @"default_c2c_head");
-        _defaultGroupAvatarImage = TUICoreBundleThemeImage(@"default_group_head_img", @"default_group_head");
-        _defaultGroupAvatarImage_Public = TUICoreBundleThemeImage(@"default_group_head_public_img", @"default_group_head_public");
-        _defaultGroupAvatarImage_Meeting = TUICoreBundleThemeImage(@"default_group_head_meeting_img", @"default_group_head_meeting");
-        _defaultGroupAvatarImage_AVChatRoom = TUICoreBundleThemeImage(@"default_group_head_avchatroom_img", @"default_group_head_avchatRoom");
-        _defaultGroupAvatarImage_Community = TUICoreBundleThemeImage(@"", @"default_group_head_community");
-
+        // Remove static image assignments, use dynamic getters instead
         _isExcludedFromUnreadCount = NO;
         _isExcludedFromLastMessage = NO;
         _enableToast = YES;
         _displayOnlineStatusIcon = NO;
         _enableGroupGridAvatar = YES;
-        [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(onChangeTheme) name:TUIDidApplyingThemeChangedNotfication object:nil];
+        // Use dynamic images instead of theme change notification
     }
     return self;
 }
@@ -53,14 +47,31 @@
     return config;
 }
 
-- (void)onChangeTheme {
-    self.defaultAvatarImage = TUICoreBundleThemeImage(@"default_c2c_head_img", @"default_c2c_head");
-    self.defaultGroupAvatarImage = TUICoreBundleThemeImage(@"default_group_head_img", @"default_group_head");
-    self.defaultGroupAvatarImage_Public = TUICoreBundleThemeImage(@"default_group_head_public_img", @"default_group_head_public");
-    self.defaultGroupAvatarImage_Meeting = TUICoreBundleThemeImage(@"default_group_head_meeting_img", @"default_group_head_meeting");
-    self.defaultGroupAvatarImage_AVChatRoom = TUICoreBundleThemeImage(@"default_group_head_avchatroom_img", @"default_group_head_avchatroom");
-    self.defaultGroupAvatarImage_Community = TUICoreBundleThemeImage(@"default_group_head_community_img", @"default_group_head_community");
+- (UIImage *)defaultAvatarImage {
+    return TUICoreBundleThemeImage(@"default_c2c_head_img", @"default_c2c_head");
 }
+
+- (UIImage *)defaultGroupAvatarImage {
+    return TUICoreBundleThemeImage(@"default_group_head_img", @"default_group_head");
+}
+
+- (UIImage *)defaultGroupAvatarImage_Public {
+    return TUICoreBundleThemeImage(@"default_group_head_public_img", @"default_group_head_public");
+}
+
+- (UIImage *)defaultGroupAvatarImage_Meeting {
+    return TUICoreBundleThemeImage(@"default_group_head_meeting_img", @"default_group_head_meeting");
+}
+
+- (UIImage *)defaultGroupAvatarImage_AVChatRoom {
+    return TUICoreBundleThemeImage(@"default_group_head_avchatroom_img", @"default_group_head_avchatRoom");
+}
+
+- (UIImage *)defaultGroupAvatarImage_Community {
+    return TUICoreBundleThemeImage(@"", @"default_group_head_community");
+}
+
+// onChangeTheme method removed - using dynamic images instead
 
 - (UIImage *)getGroupAvatarImageByGroupType:(NSString *)groupType {
     if ([groupType isEqualToString:GroupType_Work]) {

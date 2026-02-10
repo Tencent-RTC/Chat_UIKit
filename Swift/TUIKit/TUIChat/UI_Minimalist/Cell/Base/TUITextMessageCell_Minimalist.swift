@@ -336,9 +336,7 @@ public class TUITextMessageCell_Minimalist: TUIBubbleMessageCell_Minimalist, UIT
     
     private static var hasSetupNotification = false
     private static func setupNotification() {
-        guard !hasSetupNotification else { return }
-        NotificationCenter.default.addObserver(self, selector: #selector(onThemeChanged), name: Notification.Name("TUIDidApplyingThemeChangedNotfication"), object: nil)
-        hasSetupNotification = true
+        // Removed TUIDidApplyingThemeChangedNotfication observer, use dynamic colors instead
     }
     
     @objc public class func onThemeChanged() {

@@ -139,7 +139,7 @@ extension TUIBubbleMessageCell {
     private static var _incommingErrorBubble: UIImage?
     
     fileprivate static let setup: Void = {
-        NotificationCenter.default.addObserver(TUIBubbleMessageCell.self, selector: #selector(onThemeChanged(_:)), name: Notification.Name("TUIDidApplyingThemeChangedNotfication"), object: nil)
+
     }()
     
     public static var outgoingBubble: UIImage? {
