@@ -19,17 +19,18 @@ TUIKit is a UI component library based on Tencent Chat SDK. It provides universa
 <img src=https://qcloudimg.tencent-cloud.cn/raw/9c893f1a9c6368c82d44586907d5293d.png width=70% />
 
 ## Changelog
-### 8.6.7019 @2025.05.28 - Enhanced Version
-**SDK**
-- Push SDK supports multilingual internationalization.
-- Push SDK supports Meizu message categorization.
-- Cloud group search now returns join options and invitation options.
-- Cloud group member search now returns member avatars.
-- **iOS platform introduces Swift version of UIKit**.
-- Upgraded QUIC plugin to support iOS simulator.
-- **Enhanced OC SDK with Swift Optional property support**.
-- Optimized long-connection IP freeze strategy with channel type added.
-- Fixed occasional issue where push-only accounts triggered IM commands.
-- Fixed missing device model setting in Flutter SDK on Android.
-- Fixed callback thread inconsistency when Flutter SDK coexists with RoomKit.
-- Fixed occasional callback conflicts between Flutter SDK and RoomEngine.
+## Latest Enhanced Version 8.9.7511 @2026.02.10
+### SDK
+- Added streaming message capability
+- Supports fetching read timestamps for group application lists (C API)
+- Supports batch marking group application lists as read (C API)
+- Fixed issue where synchronized conversation marker information could be lost during login if local conversation did not exist
+- Fixed potential failure to update atAll data in conversation information under multi-device login scenarios
+- Fixed abnormal behavior when fetching merged message lists after locally inserting merged messages
+- Fixed failure to pull nested merged messages in offline scenarios
+- Optimized SDK stability
+### TUIKit & Demo
+- Added official account capability (iOS & Android)
+- Added voice cloning capability (iOS)
+- Added text-to-speech capability (iOS)
+- Fixed issue where "@ mentions" notification would not display when entering chat interface with more than 2 pinned messages (iOS)
