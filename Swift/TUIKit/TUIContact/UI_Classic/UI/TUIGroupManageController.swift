@@ -69,7 +69,7 @@ class TUIGroupManageController: UIViewController, UITableViewDelegate, UITableVi
         dataProvider.mutedAll(switchCell.switcher.isOn) { code, error in
             if code != 0 {
                 switchCell.switcher.isOn.toggle()
-                weakSelf?.view.makeToast(error ?? "")
+                weakSelf?.view.tui_makeToast(error ?? "")
                 return
             }
             weakSelf?.showCoverViewWhenMuteAll(switchCell.switcher.isOn)

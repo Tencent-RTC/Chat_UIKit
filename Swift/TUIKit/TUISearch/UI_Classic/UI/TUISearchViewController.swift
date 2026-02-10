@@ -18,7 +18,6 @@ class TUISearchViewController: UIViewController, UITableViewDelegate, UITableVie
     }
     
     deinit {
-        print("\(#function) dealloc")
         NotificationCenter.default.removeObserver(self)
     }
     

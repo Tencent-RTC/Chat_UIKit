@@ -199,6 +199,7 @@ public class TUIGroupChatViewController_Minimalist: TUIBaseChatViewController_Mi
         vc.groupPinList = formatGroupPinList
         vc.canRemove = messageController?.isCurrentUserRoleSuperAdminInGroup() ?? false
         vc.view.frame = view.frame
+        vc.view.backgroundColor = .clear
 
         let cellHeight: CGFloat = 62
         let maxOnePage: CGFloat = 4
@@ -208,21 +209,31 @@ public class TUIGroupChatViewController_Minimalist: TUIBaseChatViewController_Mi
         guard let topView = TUIGroupChatViewController_Minimalist.groupPinTopView else { return }
         let transRect = topView.convert(topView.bounds, to: TUITool.applicationKeywindow())
         vc.modalPresentationStyle = .overFullScreen
+        
+        let finalHeight = min(height, maxHeight)
+        
+        // Set initial state BEFORE present
+        vc.tableview.clipsToBounds = true
+        vc.tableview.frame = CGRect(x: 0, y: transRect.minY, width: self.view.frame.size.width, height: 0)
+        vc.tableview.alpha = 0
+        vc.customArrowView.frame = CGRect(x: 0, y: transRect.minY, width: self.view.frame.size.width, height: 0)
+        vc.customArrowView.alpha = 0
+        // Shadow: from unexpanded position to bottom (always extends to screen bottom)
+        vc.bottomShadow.frame = CGRect(x: 0, y: transRect.minY, width: self.view.frame.size.width, height: self.view.frame.size.height - transRect.minY)
+        vc.bottomShadow.alpha = 0
+        // Ensure tableview and customArrowView are above shadow
+        vc.view.bringSubviewToFront(vc.tableview)
+        vc.view.bringSubviewToFront(vc.customArrowView)
 
-        present(vc, animated: false) { [weak self] in
-            guard let self else { return }
-            vc.tableview.frame = CGRect(x: 0, y: transRect.minY, width: self.view.frame.size.width, height: height)
-            vc.customArrowView.frame = CGRect(x: 0, y: vc.tableview.frame.maxY, width: vc.tableview.frame.width, height: 0)
-            vc.bottomShadow.frame = CGRect(x: 0, y: vc.customArrowView.frame.maxY, width: vc.tableview.frame.width, height: self.view.frame.size.height)
+        present(vc, animated: false) {
+            // Animate to expanded state
             UIView.animate(withDuration: 0.3) {
-                vc.tableview.frame = CGRect(x: 0, y: transRect.minY, width: self.view.frame.size.width, height: min(height, maxHeight))
+                vc.tableview.frame = CGRect(x: 0, y: transRect.minY, width: self.view.frame.size.width, height: finalHeight)
+                vc.tableview.alpha = 1.0
                 vc.customArrowView.frame = CGRect(x: 0, y: vc.tableview.frame.maxY, width: vc.tableview.frame.width, height: 40)
-                vc.bottomShadow.frame = CGRect(x: 0, y: vc.customArrowView.frame.maxY, width: vc.tableview.frame.width, height: self.view.frame.size.height)
-                let maskPath = UIBezierPath(roundedRect: vc.customArrowView.bounds, byRoundingCorners: [.bottomLeft, .bottomRight], cornerRadii: CGSize(width: 10.0, height: 10.0))
-                let maskLayer = CAShapeLayer()
-                maskLayer.frame = vc.customArrowView.bounds
-                maskLayer.path = maskPath.cgPath
-                vc.customArrowView.layer.mask = maskLayer
+                vc.customArrowView.alpha = 1.0
+                // Only animate alpha, keep frame fixed
+                vc.bottomShadow.alpha = 1.0
             }
         }
 
@@ -255,9 +266,14 @@ public class TUIGroupChatViewController_Minimalist: TUIBaseChatViewController_Mi
         let height = CGFloat(groupPinList.count) * cellHeight
         let maxHeight = cellHeight * maxOnePage
         guard let pinPageVC = pinPageVC else { return }
-        pinPageVC.tableview.frame = CGRect(x: 0, y: pinPageVC.tableview.frame.minY, width: view.frame.size.width, height: min(height, maxHeight))
+        guard let topView = TUIGroupChatViewController_Minimalist.groupPinTopView else { return }
+        let transRect = topView.convert(topView.bounds, to: TUITool.applicationKeywindow())
+        
+        let finalHeight = min(height, maxHeight)
+        pinPageVC.tableview.frame = CGRect(x: 0, y: pinPageVC.tableview.frame.minY, width: view.frame.size.width, height: finalHeight)
         pinPageVC.customArrowView.frame = CGRect(x: 0, y: pinPageVC.tableview.frame.maxY, width: pinPageVC.tableview.frame.width, height: 40)
-        pinPageVC.bottomShadow.frame = CGRect(x: 0, y: pinPageVC.customArrowView.frame.maxY, width: pinPageVC.tableview.frame.width, height: view.frame.size.height)
+        // Keep shadow height from unexpanded position to bottom
+        pinPageVC.bottomShadow.frame = CGRect(x: 0, y: transRect.minY, width: pinPageVC.tableview.frame.width, height: view.frame.size.height - transRect.minY)
         pinPageVC.tableview.reloadData()
     }
 

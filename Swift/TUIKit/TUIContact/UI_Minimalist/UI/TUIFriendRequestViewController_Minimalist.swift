@@ -262,7 +262,7 @@ class TUIFriendRequestViewController_Minimalist: UIViewController, UITableViewDa
             make.width.lessThanOrEqualTo(hudView)
         }
 
-        TUITool.applicationKeywindow()?.showToast(hudView, duration: 3.0, position: TUICSToastPositionCenter, completion: nil)
+        TUITool.applicationKeywindow()?.tui_showToast(hudView, duration: 3.0, position: TUICSToastPositionCenter, completion: nil)
     }
 
     func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {

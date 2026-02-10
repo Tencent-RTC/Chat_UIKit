@@ -85,7 +85,7 @@ open class TUIConversationListBaseDataProvider: NSObject, V2TIMConversationListe
         } fail: { [weak self] code, desc in
             guard let self = self else { return }
             self.isLastPage = true
-            print("[TUIConversation] \(#function), code:\(code), desc:\(String(describing: desc))")
+            print("loadNexPageConversations, code:\(code), desc:\(String(describing: desc))")
         }
     }
 
@@ -262,7 +262,6 @@ open class TUIConversationListBaseDataProvider: NSObject, V2TIMConversationListe
             sortDataList(&addedDataList)
             handleInsertConversationList(addedDataList)
         }
-
 
         updateMardHide(&markHideDataList)
 
@@ -692,7 +691,7 @@ open class TUIConversationListBaseDataProvider: NSObject, V2TIMConversationListe
             }
         }
     }
-    
+
     public func onQuitFromGroup(groupID: String?) {
         if let groupID = groupID {
             if let data = cellDataOfGroupID(groupID) {
@@ -712,7 +711,7 @@ open class TUIConversationListBaseDataProvider: NSObject, V2TIMConversationListe
                 guard let self = self, let conv = conv else { return }
                 self.preprocess([conv])
             } fail: { code, desc in
-                print("[TUIConversation] \(#function), code:\(code), desc:\(String(describing: desc))")
+                print("onGroupInfoChanged, code:\(code), desc:\(String(describing: desc))")
             }
         }
     }
@@ -724,11 +723,11 @@ open class TUIConversationListBaseDataProvider: NSObject, V2TIMConversationListe
     }
 
     public func onConnectFailed(_ code: Int32, err: String?) {
-        print("\(#function)")
+        print("onConnectFailed(_:err:)")
     }
 
     public func onConnectSuccess() {
-        print("\(#function)")
+        print("onConnectSuccess()")
         if !conversationList.isEmpty {
             let conversationList = Array(conversationList)
             updateOnlineStatus(conversationList)
@@ -736,7 +735,7 @@ open class TUIConversationListBaseDataProvider: NSObject, V2TIMConversationListe
     }
 
     @objc public func onLoginSucc() {
-        print("\(#function)")
+        print("onLoginSucc()")
         if !conversationList.isEmpty {
             let conversationList = Array(conversationList)
             updateOnlineStatus(conversationList)
@@ -777,7 +776,7 @@ open class TUIConversationListBaseDataProvider: NSObject, V2TIMConversationListe
                     self.cancelHideAndUnreadMarkConversation(conversationID, existInHidelist: existInHidelist, existInUnreadlist: existInUnreadlist)
                 }
             } fail: { code, desc in
-                print("[TUIConversation] \(#function), code:\(code), desc:\(String(describing: desc))")
+                print("onRecvNewMessage, code:\(code), desc:\(String(describing: desc))")
             }
         }
     }
@@ -789,23 +788,19 @@ open class TUIConversationListBaseDataProvider: NSObject, V2TIMConversationListe
             V2TIMManager.sharedInstance().markConversation(conversationIDList: [conversationID], markType: markHideNumber, enableMark: false) { _ in
                 V2TIMManager.sharedInstance().markConversation(conversationIDList: [conversationID], markType: markUnreadNumber, enableMark: false) { _ in
                     // Handle result if needed
-                } fail: { code, desc in
-                    print("[TUIConversation] \(#function) code:\(code), desc:\(String(describing: desc))")
+                } fail: { _, _ in
                 }
-            } fail: { code, desc in
-                print("[TUIConversation] \(#function) code:\(code), desc:\(String(describing: desc))")
+            } fail: { _, _ in
             }
         } else if existInHidelist {
             V2TIMManager.sharedInstance().markConversation(conversationIDList: [conversationID], markType: markHideNumber, enableMark: false) { _ in
                 // Handle result if needed
-            } fail: { code, desc in
-                print("[TUIConversation] \(#function) code:\(code), desc:\(String(describing: desc))")
+            } fail: { _, _ in
             }
         } else if existInUnreadlist {
             V2TIMManager.sharedInstance().markConversation(conversationIDList: [conversationID], markType: markUnreadNumber, enableMark: false) { _ in
                 // Handle result if needed
-            } fail: { code, desc in
-                print("[TUIConversation] \(#function) code:\(code), desc:\(String(describing: desc))")
+            } fail: { _, _ in
             }
         } else {
             // nothing to do
@@ -815,27 +810,18 @@ open class TUIConversationListBaseDataProvider: NSObject, V2TIMConversationListe
     // MARK: - SDK Data Process
 
     public func handleClearGroupHistoryMessage(_ groupID: String) {
-        V2TIMManager.sharedInstance().clearGroupHistoryMessage(groupID: groupID) {
-            print("[TUIConversation] \(#function) success")
-        } fail: { code, desc in
-            print("[TUIConversation] \(#function) code:\(code), desc:\(String(describing: desc))")
+        V2TIMManager.sharedInstance().clearGroupHistoryMessage(groupID: groupID) {} fail: { _, _ in
         }
     }
 
     public func handleClearC2CHistoryMessage(_ userID: String) {
-        V2TIMManager.sharedInstance().clearC2CHistoryMessage(userID: userID) {
-            print("[TUIConversation] \(#function) success")
-        } fail: { code, desc in
-            print("[TUIConversation] \(#function) code:\(code), desc:\(String(describing: desc))")
+        V2TIMManager.sharedInstance().clearC2CHistoryMessage(userID: userID) {} fail: { _, _ in
         }
     }
 
     public func handlePinConversation(_ conversation: TUIConversationCellData, pin: Bool) {
         DispatchQueue.main.async {
-            V2TIMManager.sharedInstance().pinConversation(conversationID: conversation.conversationID, isPinned: pin) {
-                print("[TUIConversation] \(#function) success")
-            } fail: { code, desc in
-                print("[TUIConversation] \(#function) code:\(code), desc:\(String(describing: desc))")
+            V2TIMManager.sharedInstance().pinConversation(conversationID: conversation.conversationID, isPinned: pin) {} fail: { _, _ in
             }
         }
     }
@@ -967,7 +953,6 @@ open class TUIConversationListBaseDataProvider: NSObject, V2TIMConversationListe
             let nsError = error as NSError
             let code = nsError.code
             let description = nsError.localizedDescription
-            print("[TUIConversation] \(#function) code:\(code), desc:\(description)")
         }
         return draft
     }
@@ -993,8 +978,7 @@ open class TUIConversationListBaseDataProvider: NSObject, V2TIMConversationListe
             if conversation.unreadCount != 0 {
                 V2TIMManager.sharedInstance().cleanConversationUnreadMessageCount(conversationID: conversation.conversationID, cleanTimestamp: 0, cleanSequence: 0) {
                     // Handle result if needed
-                } fail: { code, description in
-                    print("[TUIConversation] \(#function) code:\(code), desc:\(String(describing: description))")
+                } fail: { _, _ in
                 }
             }
             return true
@@ -1007,8 +991,7 @@ open class TUIConversationListBaseDataProvider: NSObject, V2TIMConversationListe
         guard let conversationID = data.conversationID else { return }
         V2TIMManager.sharedInstance().markConversation(conversationIDList: [conversationID], markType: NSNumber(value: V2TIMConversationMarkType.CONVERSATION_MARK_TYPE_HIDE.rawValue), enableMark: true) { _ in
             // Handle result if needed
-        } fail: { code, desc in
-            print("[TUIConversation] \(#function) code:\(code), desc:\(String(describing: desc))")
+        } fail: { _, _ in
         }
     }
 
@@ -1016,13 +999,11 @@ open class TUIConversationListBaseDataProvider: NSObject, V2TIMConversationListe
         guard let conversationID = conv.conversationID else { return }
         V2TIMManager.sharedInstance().cleanConversationUnreadMessageCount(conversationID: conversationID, cleanTimestamp: 0, cleanSequence: 0) {
             // Handle result if needed
-        } fail: { code, description in
-            print("[TUIConversation] \(#function) code:\(code), desc:\(String(describing: description))")
+        } fail: { _, _ in
         }
         V2TIMManager.sharedInstance().markConversation(conversationIDList: [conversationID], markType: NSNumber(value: V2TIMConversationMarkType.CONVERSATION_MARK_TYPE_UNREAD.rawValue), enableMark: false) { _ in
             // Handle result if needed
-        } fail: { code, description in
-            print("[TUIConversation] \(#function) code:\(code), desc:\(String(describing: description))")
+        } fail: { _, _ in
         }
     }
 
@@ -1030,8 +1011,7 @@ open class TUIConversationListBaseDataProvider: NSObject, V2TIMConversationListe
         guard let conversationID = conv.conversationID else { return }
         V2TIMManager.sharedInstance().markConversation(conversationIDList: [conversationID], markType: NSNumber(value: V2TIMConversationMarkType.CONVERSATION_MARK_TYPE_UNREAD.rawValue), enableMark: true) { _ in
             // Handle result if needed
-        } fail: { code, description in
-            print("[TUIConversation] \(#function) code:\(code), desc:\(String(describing: description))")
+        } fail: { _, _ in
         }
     }
 
@@ -1050,7 +1030,6 @@ open class TUIConversationListBaseDataProvider: NSObject, V2TIMConversationListe
             let nsError = error as NSError
             let code = nsError.code
             let description = nsError.localizedDescription
-            print("[TUIConversation] \(#function) parse customElem data error: \(description)")
         }
         return false
     }

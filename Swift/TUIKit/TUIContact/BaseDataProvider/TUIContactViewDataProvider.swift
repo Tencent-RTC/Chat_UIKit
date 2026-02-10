@@ -196,11 +196,10 @@ public class TUIContactViewDataProvider: NSObject, V2TIMFriendshipListener, V2TI
     }
     
     public func onConnectFailed(_ code: Int32, err: String?) {
-        print(#function)
+        print("onConnectFailed, code: \(code), err: \(err ?? "")")
     }
 
     public func onConnectSuccess() {
-        print(#function)
         asyncUpdateOnlineStatus()
     }
     

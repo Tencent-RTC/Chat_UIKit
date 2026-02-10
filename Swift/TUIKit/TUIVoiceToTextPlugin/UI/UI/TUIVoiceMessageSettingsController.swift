@@ -332,7 +332,7 @@ class TUIVoiceMessageSettingsController: UIViewController, UITableViewDelegate, 
         
         // Call TUITextToVoicePlugin to update setting
         var param: [String: Any] = [
-            "settingType": itemData["settingType"] as? String ?? "",
+            "settingType": itemData["settingType"] as? Int ?? 0,
             "value": sender.isOn
         ]
         if let convID = conversationID {

@@ -213,11 +213,10 @@ extension TUIContactViewDataProvider_Minimalist: V2TIMSDKListener {
     }
 
     func onConnectFailed(_ code: Int32, err: String?) {
-        print(#function)
+        print("onConnectFailed, code: \(code), err: \(err ?? "")")
     }
 
     func onConnectSuccess() {
-        print(#function)
         asyncUpdateOnlineStatus()
     }
 }
