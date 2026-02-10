@@ -135,7 +135,7 @@ class TUIMergeMessageCell: TUIMessageCell {
     override public init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         setupViews()
-        NotificationCenter.default.addObserver(self, selector: #selector(onThemeChanged), name: NSNotification.Name("TUIDidApplyingThemeChangedNotfication"), object: nil)
+        // Use system traitCollectionDidChange instead of TUIDidApplyingThemeChangedNotfication
     }
 
     @available(*, unavailable)
@@ -267,8 +267,13 @@ class TUIMergeMessageCell: TUIMessageCell {
         layoutIfNeeded()
     }
 
-    @objc private func onThemeChanged() {
-        applyBorderTheme()
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if #available(iOS 13.0, *) {
+            if traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) {
+                applyBorderTheme()
+            }
+        }
     }
 
     private func applyBorderTheme() {

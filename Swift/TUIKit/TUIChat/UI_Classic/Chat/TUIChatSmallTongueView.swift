@@ -29,7 +29,7 @@ public class TUIChatSmallTongueView: UIView {
     private var label: UILabel?
 
     @objc public class func swiftLoad() {
-        NotificationCenter.default.addObserver(self, selector: #selector(onThemeChanged), name: NSNotification.Name("TUIDidApplyingThemeChangedNotfication"), object: nil)
+
     }
 
     @objc public class func onThemeChanged() {

@@ -115,7 +115,7 @@ class TUIInputBar_Minimalist: UIView, UITextViewDelegate, TUIAudioRecorderDelega
         setupAIButtons()
         defaultLayout()
 
-        NotificationCenter.default.addObserver(self, selector: #selector(onThemeChanged), name: Notification.Name("TUIDidApplyingThemeChangedNotfication"), object: nil)
+        // Use system traitCollectionDidChange instead of TUIDidApplyingThemeChangedNotfication
     }
 
     @available(*, unavailable)
@@ -220,8 +220,13 @@ class TUIInputBar_Minimalist: UIView, UITextViewDelegate, TUIAudioRecorderDelega
         delegate?.inputBarDidChangeInputHeight(self, offset: offset)
     }
 
-    @objc func onThemeChanged() {
-        applyBorderTheme()
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if #available(iOS 13.0, *) {
+            if traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) {
+                applyBorderTheme()
+            }
+        }
     }
 
     func applyBorderTheme() {

@@ -1144,13 +1144,12 @@ public class TUIMessageBaseDataProvider: NSObject, V2TIMAdvancedMsgListener, V2T
         var str: String? = nil
         switch tips.type {
         case .GROUP_TIPS_TYPE_JOIN:
-            if !opUser.isEmpty {
-                if userList.isEmpty || (userList.count == 1 && opUser == userList.first) {
-                    str = String(format: TUISwift.timCommonLocalizableString("TUIKitMessageTipsJoinGroupFormat"), opUser)
-                } else {
-                    let users = userList.joined(separator: "、")
-                    str = String(format: TUISwift.timCommonLocalizableString("TUIKitMessageTipsInviteJoinGroupFormat"), opUser, users)
-                }
+            if userList.isEmpty || (userList.count == 1) {
+                let users = userList.joined(separator: "、")
+                str = String(format: TUISwift.timCommonLocalizableString("TUIKitMessageTipsJoinGroupFormat"), users)
+            }
+            else {
+                str = String(format: TUISwift.timCommonLocalizableString("TUIKitMessageTipsJoinGroupFormat"), opUser)
             }
         case .GROUP_TIPS_TYPE_INVITE:
             if !userList.isEmpty {
