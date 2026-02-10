@@ -68,68 +68,23 @@ class TUITranslationDataProvider: NSObject, TUINotificationProtocol, V2TIMAdvanc
     // MARK: - Public
 
     static func translateMessage(_ data: TUIMessageCellData, completion: TUITranslateMessageCompletion?) {
-        let msg = data.innerMessage
-        guard msg?.elemType == .ELEM_TYPE_TEXT else {
-            return
-        }
-        
-        // Get @ user's nickname by userID.
-        let atUserIDs = msg?.groupAtUserList as? [String]
-        if atUserIDs == nil || atUserIDs?.count == 0 {
-            // There's not any @user info.
-            translateMessage(data, atUsers: nil, completion: completion)
-            return
-        }
-        
-        // Find @All info.
-        var atUserIDsExcludingAtAll = [String]()
-        let atAllIndex = NSMutableIndexSet()
-        for (i, userID) in atUserIDs!.enumerated() {
-            if userID != kImSDK_MesssageAtALL {
-                // Exclude @All.
-                atUserIDsExcludingAtAll.append(userID)
-            } else {
-                // Record @All's location for later restore.
-                atAllIndex.add(i)
-            }
-        }
-        
-        // There's only @All info.
-        if atUserIDsExcludingAtAll.isEmpty {
-            let atAllNames: [String] = Array(repeating: TUISwift.timCommonLocalizableString("All"), count: atAllIndex.count)
-            translateMessage(data, atUsers: atAllNames, completion: completion)
-            return
-        }
-        
-        V2TIMManager.sharedInstance().getUsersInfo(atUserIDsExcludingAtAll, succ: { infoList in
-            guard let infoList = infoList else { return }
-            var atUserNames = [String]()
-            for userID in atUserIDsExcludingAtAll {
-                if let user = infoList.first(where: { $0.userID == userID }) {
-                    atUserNames.append(user.nickName ?? user.userID ?? "")
-                }
-            }
-            // Restore @All.
-            atAllIndex.enumerate { idx, _ in
-                atUserNames.insert(TUISwift.timCommonLocalizableString("All"), at: idx)
-            }
-            translateMessage(data, atUsers: atUserNames, completion: completion)
-        }, fail: { _, _ in
-            translateMessage(data, atUsers: atUserIDs, completion: completion)
-        })
+        translateMessage(data, atUsers: nil, completion: completion)
     }
     
     static func translateMessage(_ data: TUIMessageCellData, atUsers: [String]?, completion: TUITranslateMessageCompletion?) {
         guard let msg = data.innerMessage, let textElem = msg.textElem,
               let target = TUITranslationConfig.shared.targetLanguageCode else { return }
         
-        let splitResult = textElem.text?.splitTextByEmojiAndAtUsers(atUsers)
-        let textArray = splitResult?[String.kSplitStringTextKey] as? [String] ?? []
+        let originalText = textElem.text ?? ""
+        
+        // Split text into @mentions, emojis, and translatable text (without fetching user info)
+        let splitResult = splitTextByAtMentionAndEmoji(originalText)
+        let textArray = splitResult.textArray
         
         if textArray.isEmpty {
-            // Nothing needs to be translated.
-            saveTranslationResult(msg, text: textElem.text ?? "", status: .shown)
-            completion?(0, "", data, TUITranslationViewStatus.shown.rawValue, textElem.text ?? "")
+            // Nothing needs to be translated (only @mentions and emoji)
+            saveTranslationResult(msg, text: originalText, status: .shown)
+            completion?(0, "", data, TUITranslationViewStatus.shown.rawValue, originalText)
             return
         }
         
@@ -138,14 +93,13 @@ class TUITranslationDataProvider: NSObject, TUINotificationProtocol, V2TIMAdvanc
         
         if let translatedText = translatedText, !translatedText.isEmpty {
             saveTranslationResult(msg, text: translatedText, status: .shown)
-            
             completion?(0, "", data, TUITranslationViewStatus.shown.rawValue, translatedText)
         } else {
             saveTranslationResult(msg, text: "", status: .loading)
             completion?(0, "", data, TUITranslationViewStatus.loading.rawValue, "")
         }
         
-        // Send translate request.
+        // Send translate request
         V2TIMManager.sharedInstance().translateText(sourceTextList: textArray, sourceLanguage: "", targetLanguage: target, completion: { code, desc, result in
             guard let result = result else { return }
             if code != 0 || result.count == 0 {
@@ -160,13 +114,136 @@ class TUITranslationDataProvider: NSObject, TUINotificationProtocol, V2TIMAdvanc
                 return
             }
             
-            let text = String.replacedStringWithArray(splitResult?[String.kSplitStringResultKey] as? [String] ?? [],
-                                                      index: splitResult?[String.kSplitStringTextIndexKey] as? [Int] ?? [],
-                                                      replaceDict: result) ?? ""
-            saveTranslationResult(msg, text: text, status: .shown)
+            // Rebuild text with translations, keeping @mentions and emoji
+            let translatedText = rebuildTextWithTranslations(parts: splitResult.parts, textArray: textArray, translations: result)
+            saveTranslationResult(msg, text: translatedText, status: .shown)
             
-            completion?(0, "", data, TUITranslationViewStatus.shown.rawValue, text)
+            completion?(0, "", data, TUITranslationViewStatus.shown.rawValue, translatedText)
         })
+    }
+    
+    // MARK: - Helper Methods for Text Splitting
+    
+    private enum PartType {
+        case mention  // @xxx format
+        case emoji    // Both TUIKit [xxx] and Unicode emoji
+        case text     // Normal translatable text
+    }
+    
+    private static func splitTextByAtMentionAndEmoji(_ text: String) -> (parts: [(type: PartType, content: String)], textArray: [String]) {
+        var parts: [(type: PartType, content: String)] = []
+        var textArray: [String] = []
+        
+        // Step 1: Find all @mention ranges (@xxx followed by space)
+        let atPattern = "@[^ ]+ "
+        let atRegex = try? NSRegularExpression(pattern: atPattern, options: [])
+        let atMatches = atRegex?.matches(in: text, options: [], range: NSRange(location: 0, length: (text as NSString).length)) ?? []
+        
+        var currentIndex = text.startIndex
+        
+        for atMatch in atMatches {
+            guard let matchRange = Range(atMatch.range, in: text) else { continue }
+            
+            // Process text before @mention
+            if currentIndex < matchRange.lowerBound {
+                let beforeText = String(text[currentIndex..<matchRange.lowerBound])
+                processTextWithEmoji(beforeText, parts: &parts, textArray: &textArray)
+            }
+            
+            // Add @mention as is
+            let mentionText = String(text[matchRange])
+            parts.append((type: .mention, content: mentionText))
+            
+            currentIndex = matchRange.upperBound
+        }
+        
+        // Process remaining text after last @mention
+        if currentIndex < text.endIndex {
+            let remainingText = String(text[currentIndex...])
+            processTextWithEmoji(remainingText, parts: &parts, textArray: &textArray)
+        }
+        
+        return (parts, textArray)
+    }
+    
+    private static func processTextWithEmoji(_ text: String, parts: inout [(type: PartType, content: String)], textArray: inout [String]) {
+        // Find all emoji ranges (TUIKit custom emoji + Unicode emoji)
+        var emojiRanges: [NSRange] = []
+        
+        // TUIKit custom emoji: [xxx]
+        let customEmojiPattern = String.getRegexEmoji()
+        if let customRegex = try? NSRegularExpression(pattern: customEmojiPattern, options: .caseInsensitive) {
+            let matches = customRegex.matches(in: text, options: [], range: NSRange(location: 0, length: (text as NSString).length))
+            if let faceGroup = TIMConfig.shared.faceGroups?.first {
+                for match in matches {
+                    let substring = (text as NSString).substring(with: match.range)
+                    if let faces = faceGroup.faces, faces.contains(where: { $0.name == substring || $0.localizableName == substring }) {
+                        emojiRanges.append(match.range)
+                    }
+                }
+            }
+        }
+        
+        // Unicode emoji
+        let unicodeEmojiPattern = String.unicodeEmojiReString()
+        if let unicodeRegex = try? NSRegularExpression(pattern: unicodeEmojiPattern, options: .caseInsensitive) {
+            let matches = unicodeRegex.matches(in: text, options: [], range: NSRange(location: 0, length: (text as NSString).length))
+            emojiRanges.append(contentsOf: matches.map { $0.range })
+        }
+        
+        // Sort emoji ranges by location
+        emojiRanges.sort { $0.location < $1.location }
+        
+        // Split text by emoji ranges
+        var currentPos = 0
+        let nsText = text as NSString
+        
+        for emojiRange in emojiRanges {
+            // Add text before emoji
+            if currentPos < emojiRange.location {
+                let textContent = nsText.substring(with: NSRange(location: currentPos, length: emojiRange.location - currentPos))
+                if !textContent.isEmpty {
+                    parts.append((type: .text, content: textContent))
+                    textArray.append(textContent)
+                }
+            }
+            
+            // Add emoji
+            let emojiContent = nsText.substring(with: emojiRange)
+            parts.append((type: .emoji, content: emojiContent))
+            
+            currentPos = emojiRange.location + emojiRange.length
+        }
+        
+        // Add remaining text
+        if currentPos < nsText.length {
+            let textContent = nsText.substring(from: currentPos)
+            if !textContent.isEmpty {
+                parts.append((type: .text, content: textContent))
+                textArray.append(textContent)
+            }
+        }
+    }
+    
+    private static func rebuildTextWithTranslations(parts: [(type: PartType, content: String)], textArray: [String], translations: [String: String]) -> String {
+        var result = ""
+        var textIndex = 0
+        
+        for part in parts {
+            switch part.type {
+            case .mention, .emoji:
+                // Keep @mention and emoji as is
+                result += part.content
+            case .text:
+                // Replace with translation
+                if textIndex < textArray.count {
+                    result += translations[textArray[textIndex]] ?? part.content
+                    textIndex += 1
+                }
+            }
+        }
+        
+        return result
     }
     
     static func saveTranslationResult(_ message: V2TIMMessage, text: String, status: TUITranslationViewStatus) {

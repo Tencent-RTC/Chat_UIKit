@@ -145,13 +145,15 @@ public class TUIChatbotMessageCell_Minimalist: TUITextMessageCell_Minimalist {
                 currentTimer = timer
                 chatbotData.timer = timer
                 
-                let period: TimeInterval = 0.01
+                let period: TimeInterval = 0.02
                 timer.schedule(deadline: .now() + period, repeating: period)
                 
                 timer.setEventHandler { [weak self, weak chatbotData] in
                     guard let self = self, let chatbotData = chatbotData else { return }
                     
-                    if chatbotData.displayedContentLength == (chatbotData.contentString?.length ?? 0) {
+                    let totalLength = chatbotData.contentString?.length ?? 0
+                    
+                    if chatbotData.displayedContentLength >= totalLength {
                         self.stopTimer(timer)
                         self.currentTimer = nil
                         chatbotData.timer = nil
@@ -162,7 +164,22 @@ public class TUIChatbotMessageCell_Minimalist: TUITextMessageCell_Minimalist {
                         return
                     }
                     
-                    chatbotData.displayedContentLength += 1
+                    // Dynamic speed: increase characters per tick based on pending content
+                    let remainingLength = totalLength - chatbotData.displayedContentLength
+                    var charsToAdd = 1
+                    
+                    // When server is finished, accelerate to catch up
+                    if chatbotData.isFinished {
+                        // Finish remaining content in about 0.5 seconds (25 ticks at 20ms)
+                        charsToAdd = max(1, (remainingLength + 24) / 25)
+                    } else if remainingLength > 50 {
+                        // If too much pending content, speed up
+                        charsToAdd = max(1, remainingLength / 30)
+                    } else if remainingLength > 20 {
+                        charsToAdd = 2
+                    }
+                    
+                    chatbotData.displayedContentLength = min(chatbotData.displayedContentLength + charsToAdd, totalLength)
                     
                     if self.textView.attributedText.length > 1 &&
                        self.getAttributeStringRect(self.textView.attributedText).size.height >
@@ -298,27 +315,51 @@ public class TUIChatbotMessageCell_Minimalist: TUITextMessageCell_Minimalist {
     private func updateLoadingImageViewLayout() {
         guard let loadingImageView = loadingImageView, 
               !loadingImageView.isHidden,
-              let displayedText = textView.text, 
-              !displayedText.isEmpty else { return }
+              let attributedText = textView.attributedText,
+              attributedText.length > 0 else { return }
         
-        // Calculate actual text rendering position
-        let layoutManager = textView.layoutManager
-        let textContainer = textView.textContainer
-        
-        // Get position of the last character
-        let lastCharRange = NSRange(location: displayedText.count - 1, length: 1)
-        let lastCharRect = layoutManager.boundingRect(forGlyphRange: lastCharRange, in: textContainer)
-        
-        // Set loading image position to the right of the last character
+        // Avoid accessing layoutManager directly (causes TextKit 1 compatibility mode switch)
+        // Use attributedText bounding rect calculation instead
         let imageSize: CGFloat = 16.0
-        let imageX = lastCharRect.origin.x + lastCharRect.size.width + 4 // 4px spacing after last character
-        let imageY = lastCharRect.origin.y + (lastCharRect.size.height - imageSize) / 2 // Vertically centered
         
-        // Convert to textView coordinate system
-        let textViewX = textView.textContainerInset.left + imageX
-        let textViewY = textView.textContainerInset.top + imageY
+        // Calculate text size using the same method as getContentSize
+        let maxWidth = TUISwift.tTextMessageCell_Text_Width_Max()
+        let textRect = attributedText.boundingRect(
+            with: CGSize(width: maxWidth, height: CGFloat.greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin, .usesFontLeading],
+            context: nil
+        )
         
-        loadingImageView.frame = CGRect(x: textViewX, y: textViewY, width: imageSize, height: imageSize)
+        // Get font for line height calculation
+        var lineHeight: CGFloat = 20
+        if let font = attributedText.attribute(.font, at: 0, effectiveRange: nil) as? UIFont {
+            lineHeight = font.lineHeight
+        }
+        
+        // Calculate number of lines
+        let numberOfLines = max(1, Int(ceil(textRect.height / lineHeight)))
+        
+        // Estimate last line width
+        let lastLineWidth: CGFloat
+        if numberOfLines == 1 {
+            lastLineWidth = textRect.width
+        } else {
+            // For multi-line, estimate using total width / lines as approximate last line width
+            // This is a rough estimate but avoids accessing layoutManager
+            let totalChars = attributedText.length
+            let avgCharsPerLine = totalChars / numberOfLines
+            let lastLineChars = totalChars - (avgCharsPerLine * (numberOfLines - 1))
+            lastLineWidth = min(maxWidth, textRect.width * CGFloat(lastLineChars) / CGFloat(max(1, avgCharsPerLine)))
+        }
+        
+        // Position loading image at end of last line
+        let textInsetLeft = textView.textContainerInset.left
+        let textInsetTop = textView.textContainerInset.top
+        
+        let imageX = textInsetLeft + min(lastLineWidth, maxWidth) + 4
+        let imageY = textInsetTop + CGFloat(numberOfLines - 1) * lineHeight + (lineHeight - imageSize) / 2
+        
+        loadingImageView.frame = CGRect(x: imageX, y: imageY, width: imageSize, height: imageSize)
         
         if TUISwift.isRTL() {
             loadingImageView.resetFrameToFitRTL()
@@ -389,37 +430,19 @@ public class TUIChatbotMessageCell_Minimalist: TUITextMessageCell_Minimalist {
                 adjustedContentSize.width += statusWidth
             }
         } else {
-            // Multi-line: check if last line has enough space for status
-            // Use a more accurate method to determine if status needs to wrap
+            // Multi-line: estimate last line width to determine if status needs to wrap
+            // Avoid using layoutManager to prevent TextKit 1 compatibility mode switch
             
-            // Create a temporary text view to measure the actual last line width
-            let tempTextView = UITextView()
-            tempTextView.font = textFont
-            tempTextView.attributedText = attributeString
-            tempTextView.textContainerInset = .zero
-            tempTextView.textContainer.lineFragmentPadding = 0
-            tempTextView.textContainer.size = CGSize(width: availableWidth, height: CGFloat.greatestFiniteMagnitude)
+            // Calculate approximate last line width using text metrics
+            let totalChars = attributeString.length
+            let numberOfLines = max(1, Int(ceil(contentSize.height / textFont.lineHeight)))
+            let avgCharsPerLine = max(1, totalChars / numberOfLines)
+            let lastLineChars = totalChars - (avgCharsPerLine * (numberOfLines - 1))
+            let estimatedLastLineWidth = min(availableWidth, contentSize.width * CGFloat(lastLineChars) / CGFloat(max(1, avgCharsPerLine)))
             
-            // Force layout to get accurate line measurements
-            tempTextView.layoutManager.ensureLayout(for: tempTextView.textContainer)
-            
-            // Get the last line's used rect by enumerating line fragments
-            var lastLineRect: CGRect = .zero
-            var foundLastLine = false
-            
-            tempTextView.layoutManager.enumerateLineFragments(forGlyphRange: NSRange(location: 0, length: attributeString.length)) { (rect, usedRect, textContainer, glyphRange, stop) in
-                lastLineRect = usedRect
-                foundLastLine = true
-            }
-            
-            if foundLastLine {
-                // Check if last line has enough space for status
-                if lastLineRect.width + statusWidth > availableWidth {
-                    // Last line doesn't have enough space, force status to next line
-                    adjustedContentSize.height += chatbotData.msgStatusSize.height
-                }
-            } else {
-                // Fallback: if we can't determine line info, assume status needs to wrap for safety
+            // Check if last line has enough space for status
+            if estimatedLastLineWidth + statusWidth > availableWidth {
+                // Last line doesn't have enough space, force status to next line
                 adjustedContentSize.height += chatbotData.msgStatusSize.height
             }
         }

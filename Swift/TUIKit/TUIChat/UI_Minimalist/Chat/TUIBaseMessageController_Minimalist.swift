@@ -1335,7 +1335,12 @@ public class TUIBaseMessageController_Minimalist: UITableViewController, TUIMess
     @objc public func onCopyMsg(_ sender: Any?) {
         var content = ""
         if let txtCell = sender as? TUITextMessageCell_Minimalist {
-            content = txtCell.textData?.content ?? ""
+            // For AI chatbot messages, use textData?.content directly
+            if let conversationData = conversationData, conversationData.isAIConversation() {
+                content = txtCell.textData?.content ?? ""
+            } else {
+                content = txtCell.selectContent ?? ""
+            }
         } else if let replyMsgCell = sender as? TUIReferenceMessageCell_Minimalist, let replyMsg = replyMsgCell.data as? TUIReferenceMessageCellData {
             content = replyMsg.content
         }
@@ -1800,7 +1805,7 @@ public class TUIBaseMessageController_Minimalist: UITableViewController, TUIMess
         }
         
         // Create AI typing placeholder message using TUIChatbotMessagePlaceholderCellData
-        let aiTypingData = TUIChatbotMessagePlaceholderCellData.createAIPlaceholderCellData()
+        let aiTypingData = TUIChatbotMessagePlaceholderCellData.createAIPlaceholderCellData(avatarUrl: conversationData?.faceUrl)
         
         // Send as placeholder message
         sendPlaceHolderUIMessage(aiTypingData)

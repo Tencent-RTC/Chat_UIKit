@@ -64,7 +64,7 @@ class TUIGroupManageController_Minimalist: UIViewController, UITableViewDelegate
             guard let self else { return }
             guard code == 0 else {
                 switchCell.switcher.isOn.toggle()
-                self.view.makeToast(error ?? "")
+                self.view.tui_makeToast(error ?? "")
                 return
             }
             self.showCoverViewWhenMuteAll(switchCell.switcher.isOn)

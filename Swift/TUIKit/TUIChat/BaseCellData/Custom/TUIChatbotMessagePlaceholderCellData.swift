@@ -22,11 +22,18 @@ class TUIChatbotMessagePlaceholderCellData: TUITextMessageCellData {
     // MARK: - Class Methods
     
     /// Create placeholder cell data for AI typing state
-    class func createAIPlaceholderCellData() -> TUIChatbotMessagePlaceholderCellData {
+    /// - Parameter avatarUrl: The avatar URL of the AI chatbot
+    class func createAIPlaceholderCellData(avatarUrl: String? = nil) -> TUIChatbotMessagePlaceholderCellData {
         let cellData = TUIChatbotMessagePlaceholderCellData(direction: .incoming)
         cellData.content = "" // Empty content for placeholder
         cellData.isAITyping = true // Start in typing state
         cellData.reuseId = "TUIChatbotMessagePlaceholderCellData"
+        
+        // Set AI chatbot avatar
+        if let urlString = avatarUrl, !urlString.isEmpty {
+            cellData.avatarUrl = URL(string: urlString)
+        }
+        
         return cellData
     }
     

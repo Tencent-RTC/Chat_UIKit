@@ -32,7 +32,7 @@ class TUISettingAdminController_Minimalist: UIViewController {
         dataProvider.loadData { [weak self] code, error in
             self?.tableView.reloadData()
             if code != 0 {
-                self?.view.makeToast(error ?? "")
+                self?.view.tui_makeToast(error ?? "")
             }
         }
     }
@@ -80,7 +80,7 @@ extension TUISettingAdminController_Minimalist: UITableViewDataSource, UITableVi
             vc.selectedFinished = { [weak self] modelList in
                 self?.dataProvider.settingAdmins(userModels: modelList) { code, errorMsg in
                     if code != 0 {
-                        self?.view.makeToast(errorMsg ?? "")
+                        self?.view.tui_makeToast(errorMsg ?? "")
                     }
                     self?.tableView.reloadData()
                 }
@@ -104,7 +104,7 @@ extension TUISettingAdminController_Minimalist: UITableViewDataSource, UITableVi
             if let identifier = cellData.identifier {
                 dataProvider.removeAdmin(userID: identifier) { [weak self] code, err in
                     if code != 0 {
-                        self?.view.makeToast(err ?? "")
+                        self?.view.tui_makeToast(err ?? "")
                     }
                     self?.tableView.reloadData()
                 }

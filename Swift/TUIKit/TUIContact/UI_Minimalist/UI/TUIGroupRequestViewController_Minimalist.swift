@@ -6,7 +6,7 @@ import UIKit
 
 class TUIGroupRequestViewController_Minimalist: UIViewController, UITableViewDataSource, UITableViewDelegate, TUIProfileCardDelegate, TUIFloatSubViewControllerProtocol {
     var floatDataSourceChanged: (([Any]) -> Void)?
-    
+
     func didTap(onAvatar cell: TUIProfileCardCell) {
         // to do
     }
@@ -69,7 +69,6 @@ class TUIGroupRequestViewController_Minimalist: UIViewController, UITableViewDat
     }
 
     deinit {
-        print("\(#function) dealloc")
         NotificationCenter.default.removeObserver(self)
     }
 
@@ -215,7 +214,7 @@ class TUIGroupRequestViewController_Minimalist: UIViewController, UITableViewDat
         msgView.frame = CGRect(x: 0, y: 0, width: descLabel.frame.origin.x + descLabel.frame.size.width + TUISwift.kScale390(12), height: TUISwift.kScale390(36))
         msgView.center = hudView.center
 
-        TUITool.applicationKeywindow()?.showToast(hudView, duration: 3.0, position: TUICSToastPositionCenter, completion: { _ in
+        TUITool.applicationKeywindow()?.tui_showToast(hudView, duration: 3.0, position: TUICSToastPositionCenter, completion: { _ in
             // Completion handler
         })
     }

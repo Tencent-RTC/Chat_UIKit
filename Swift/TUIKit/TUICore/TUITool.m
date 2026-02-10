@@ -513,49 +513,49 @@ static NSMutableDictionary * gIMErrorMsgMap = nil;
 
 + (void)makeToast:(NSString *)str {
     if ([TUIConfig defaultConfig].enableToast) {
-        [[UIApplication sharedApplication].keyWindow makeToast:str];
+        [[UIApplication sharedApplication].keyWindow tui_makeToast:str];
     }
 }
 
 + (void)makeToast:(NSString *)str duration:(NSTimeInterval)duration {
     if ([TUIConfig defaultConfig].enableToast) {
-        [[UIApplication sharedApplication].keyWindow makeToast:str duration:duration];
+        [[UIApplication sharedApplication].keyWindow tui_makeToast:str duration:duration];
     }
 }
 
 + (void)makeToast:(NSString *)str duration:(NSTimeInterval)duration position:(CGPoint)position {
     if ([TUIConfig defaultConfig].enableToast) {
-        [[UIApplication sharedApplication].keyWindow makeToast:str duration:duration position:[NSValue valueWithCGPoint:position]];
+        [[UIApplication sharedApplication].keyWindow tui_makeToast:str duration:duration position:[NSValue valueWithCGPoint:position]];
     }
 }
 
 + (void)makeToast:(NSString *)str duration:(NSTimeInterval)duration idposition:(id)position {
     if ([TUIConfig defaultConfig].enableToast) {
-        [[UIApplication sharedApplication].keyWindow makeToast:str duration:duration position:position];
+        [[UIApplication sharedApplication].keyWindow tui_makeToast:str duration:duration position:position];
     }
 }
 
 + (void)makeToastError:(NSInteger)error msg:(NSString *)msg {
     if ([TUIConfig defaultConfig].enableToast) {
-        [[UIApplication sharedApplication].keyWindow makeToast:[self convertIMError:error msg:msg]];
+        [[UIApplication sharedApplication].keyWindow tui_makeToast:[self convertIMError:error msg:msg]];
     }
 }
 
 + (void)hideToast {
     if ([TUIConfig defaultConfig].enableToast) {
-        [[UIApplication sharedApplication].keyWindow hideToast];
+        [[UIApplication sharedApplication].keyWindow tui_hideToast];
     }
 }
 
 + (void)makeToastActivity {
     if ([TUIConfig defaultConfig].enableToast) {
-        [[UIApplication sharedApplication].keyWindow makeToastActivity:TUICSToastPositionCenter];
+        [[UIApplication sharedApplication].keyWindow tui_makeToastActivity:TUICSToastPositionCenter];
     }
 }
 
 + (void)hideToastActivity {
     if ([TUIConfig defaultConfig].enableToast) {
-        [[UIApplication sharedApplication].keyWindow hideToastActivity];
+        [[UIApplication sharedApplication].keyWindow tui_hideToastActivity];
     }
 }
 

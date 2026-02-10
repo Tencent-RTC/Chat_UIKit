@@ -861,7 +861,6 @@ class TUIEnterIMViewController: UIViewController, TUIStyleSelectControllerDelega
     }
 
     func redpoint_clearUnreadMessage() {
-        print("[Redpoint] \(#function)")
         V2TIMManager.sharedInstance().cleanConversationUnreadMessageCount(conversationID: "", cleanTimestamp: 0, cleanSequence: 0, succ: { [weak self] in
             guard let self = self else { return }
             TUITool.makeToast(TUISwift.timCommonLocalizableString("TIMAppMarkAllMessageAsReadSucc"))
@@ -878,7 +877,6 @@ class TUIEnterIMViewController: UIViewController, TUIStyleSelectControllerDelega
     }
 
     func onTotalUnreadCountChanged(_ totalUnreadCount: UInt) {
-        print("[Redpoint] \(#function), \(totalUnreadCount)")
         let total = totalUnreadCount
         let item = tbc?.tabBarItems.first
         item?.badgeView!.title = total > 0 ? (total > 99 ? "99+" : "\(total)") : ""
@@ -886,7 +884,6 @@ class TUIEnterIMViewController: UIViewController, TUIStyleSelectControllerDelega
     }
 
     func redpoint_setupTotalUnreadCount() {
-        print("[Redpoint] \(#function)")
         // Getting total unread count
         V2TIMManager.sharedInstance().getTotalUnreadMessageCount(succ: { [weak self] totalCount in
             self?.onTotalUnreadCountChanged(UInt(totalCount))
@@ -901,7 +898,6 @@ class TUIEnterIMViewController: UIViewController, TUIStyleSelectControllerDelega
     }
 
     func onFriendApplicationCountChanged(_ applicationCount: Int) {
-        print("[Redpoint] \(#function), \(applicationCount)")
         guard let tab = tbc, tab.tabBarItems.count >= 2 else { return }
         var contactItem: TUITabBarItem?
         for item in tab.tabBarItems {

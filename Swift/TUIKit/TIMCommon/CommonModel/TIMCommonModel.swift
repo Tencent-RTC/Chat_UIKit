@@ -825,7 +825,7 @@ public class TUIGroupPendencyCellData: TUICommonCellData {
         }
         self.requestMsg = pendency.requestMsg
 
-        let inviteJoin = String(format: TUISwift.timCommonLocalizableString("TUIKitInviteJoinGroupFormat"), pendency.toUser ?? "")
+        let inviteJoin = String(format: TUISwift.timCommonLocalizableString("TUIKitInviteJoinGroupFormat"), pendency.fromUser ?? "")
         let applyJoin = String(format: TUISwift.timCommonLocalizableString("TUIKitWhoRequestForJoinGroupFormat"), title ?? "")
         if requestMsg?.isEmpty ?? true {
             self.requestMsg = pendency.applicationType == .GROUP_JOIN_APPLICATION_NEED_APPROVED_BY_ADMIN ? inviteJoin : applyJoin

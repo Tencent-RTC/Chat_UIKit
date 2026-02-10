@@ -11,7 +11,9 @@ public extension String {
         let regexEmoji = String.getRegexEmoji()
         do {
             let regex = try NSRegularExpression(pattern: regexEmoji, options: .caseInsensitive)
-            let results = regex.matches(in: content, options: [], range: NSRange(location: 0, length: content.count))
+            // Use NSString for consistent UTF-16 based range calculation
+            let nsString = content as NSString
+            let results = regex.matches(in: content, options: [], range: NSRange(location: 0, length: nsString.length))
             let group = TIMConfig.shared.faceGroups?[0]
             var waitingReplace = [(range: NSRange, localizableStr: String)]()
             
@@ -43,7 +45,9 @@ public extension String {
         let regexEmoji = String.getRegexEmoji()
         do {
             let regex = try NSRegularExpression(pattern: regexEmoji, options: .caseInsensitive)
-            let results = regex.matches(in: content, options: [], range: NSRange(location: 0, length: content.count))
+            // Use NSString for consistent UTF-16 based range calculation
+            let nsString = content as NSString
+            let results = regex.matches(in: content, options: [], range: NSRange(location: 0, length: nsString.length))
             let group = TIMConfig.shared.faceGroups?[0]
             var faceDict = [String: String]()
             
@@ -87,13 +91,15 @@ public extension String {
         let regexEmoji = String.getRegexEmoji()
         do {
             let regex = try NSRegularExpression(pattern: regexEmoji, options: .caseInsensitive)
-            let results = regex.matches(in: self, options: [], range: NSRange(location: 0, length: self.count))
+            // Use NSString for consistent UTF-16 based range calculation
+            let nsString = self as NSString
+            let results = regex.matches(in: self, options: [], range: NSRange(location: 0, length: nsString.length))
             let group = faceGroups[0]
             var imageArray = [(range: NSRange, imageStr: NSAttributedString)]()
             
             for match in results {
                 let range = match.range
-                let subStr = (self as NSString).substring(with: range)
+                let subStr = nsString.substring(with: range)
                 
                 if let faces = group.faces {
                     for face in faces {
@@ -179,13 +185,15 @@ public extension String {
         let regexEmoji = String.getRegexEmoji()
         do {
             let regex = try NSRegularExpression(pattern: regexEmoji, options: .caseInsensitive)
-            let results = regex.matches(in: self, options: [], range: NSRange(location: 0, length: self.count))
+            // Use NSString for consistent UTF-16 based range calculation
+            let nsString = self as NSString
+            let results = regex.matches(in: self, options: [], range: NSRange(location: 0, length: nsString.length))
             let group = faceGroups[0]
             var imageArray = [(range: NSRange, imageStr: NSAttributedString)]()
             
             for match in results {
                 let range = match.range
-                let subStr = (self as NSString).substring(with: range)
+                let subStr = nsString.substring(with: range)
                 
                 if let faces = group.faces {
                     for face in faces {
@@ -376,11 +384,13 @@ public extension String {
         let regexOfCustomEmoji = String.getRegexEmoji()
         do {
             let regex = try NSRegularExpression(pattern: regexOfCustomEmoji, options: .caseInsensitive)
-            let matchResult = regex.matches(in: text, options: [], range: NSRange(location: 0, length: text.count))
+            // Use NSString for consistent UTF-16 based range calculation
+            let nsString = text as NSString
+            let matchResult = regex.matches(in: text, options: [], range: NSRange(location: 0, length: nsString.length))
             let group = faceGroups[0]
             
             for match in matchResult {
-                let substring = (text as NSString).substring(with: match.range)
+                let substring = nsString.substring(with: match.range)
                 if let faces = group.faces {
                     for face in faces {
                         if face.name == substring || face.localizableName == substring {
@@ -400,7 +410,9 @@ public extension String {
         let regexOfUnicodeEmoji = String.unicodeEmojiReString()
         do {
             let regex = try NSRegularExpression(pattern: regexOfUnicodeEmoji, options: .caseInsensitive)
-            let matchResult = regex.matches(in: text, options: [], range: NSRange(location: 0, length: text.count))
+            // Use NSString for consistent UTF-16 based range calculation
+            let nsString = text as NSString
+            let matchResult = regex.matches(in: text, options: [], range: NSRange(location: 0, length: nsString.length))
             for match in matchResult {
                 result.append(NSValue(range: match.range))
             }

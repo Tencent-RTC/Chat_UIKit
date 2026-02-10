@@ -55,20 +55,20 @@ static const NSString *TUICSToastQueueKey = @"TUICSToastQueueKey";
 @interface UIView (TUIToastPrivate)
 
 /**
- These private methods are being prefixed with "cs_" to reduce the likelihood of non-obvious
+ These private methods are being prefixed with "tuics_" to reduce the likelihood of non-obvious
  naming conflicts with other UIView methods.
 
- @discussion Should the public API also use the cs_ prefix? Technically it should, but it
+ @discussion Should the public API also use the tuics_ prefix? Technically it should, but it
  results in code that is less legible. The current public method names seem unlikely to cause
  conflicts so I think we should favor the cleaner API for now.
  */
-- (void)cs_showToast:(UIView *)toast duration:(NSTimeInterval)duration position:(id)position;
-- (void)cs_hideToast:(UIView *)toast;
-- (void)cs_hideToast:(UIView *)toast fromTap:(BOOL)fromTap;
-- (void)cs_toastTimerDidFinish:(NSTimer *)timer;
-- (void)cs_handleToastTapped:(UITapGestureRecognizer *)recognizer;
-- (CGPoint)cs_centerPointForPosition:(id)position withToast:(UIView *)toast;
-- (NSMutableArray *)cs_toastQueue;
+- (void)tuics_showToast:(UIView *)toast duration:(NSTimeInterval)duration position:(id)position;
+- (void)tuics_hideToast:(UIView *)toast;
+- (void)tuics_hideToast:(UIView *)toast fromTap:(BOOL)fromTap;
+- (void)tuics_toastTimerDidFinish:(NSTimer *)timer;
+- (void)tuics_handleToastTapped:(UITapGestureRecognizer *)recognizer;
+- (CGPoint)tuics_centerPointForPosition:(id)position withToast:(UIView *)toast;
+- (NSMutableArray *)tuics_toastQueue;
 
 @end
 
@@ -76,24 +76,24 @@ static const NSString *TUICSToastQueueKey = @"TUICSToastQueueKey";
 
 #pragma mark - Make Toast Methods
 
-- (void)makeToast:(NSString *)message {
-    [self makeToast:message duration:[TUICSToastManager defaultDuration] position:[TUICSToastManager defaultPosition] style:nil];
+- (void)tui_makeToast:(NSString *)message {
+    [self tui_makeToast:message duration:[TUICSToastManager tui_defaultDuration] position:[TUICSToastManager tui_defaultPosition] style:nil];
 }
 
-- (void)makeToast:(NSString *)message duration:(NSTimeInterval)duration {
-    [self makeToast:message duration:duration position:[TUICSToastManager defaultPosition] style:nil];
+- (void)tui_makeToast:(NSString *)message duration:(NSTimeInterval)duration {
+    [self tui_makeToast:message duration:duration position:[TUICSToastManager tui_defaultPosition] style:nil];
 }
 
-- (void)makeToast:(NSString *)message duration:(NSTimeInterval)duration position:(id)position {
-    [self makeToast:message duration:duration position:position style:nil];
+- (void)tui_makeToast:(NSString *)message duration:(NSTimeInterval)duration position:(id)position {
+    [self tui_makeToast:message duration:duration position:position style:nil];
 }
 
-- (void)makeToast:(NSString *)message duration:(NSTimeInterval)duration position:(id)position style:(TUICSToastStyle *)style {
-    UIView *toast = [self toastViewForMessage:message title:nil image:nil style:style];
-    [self showToast:toast duration:duration position:position completion:nil];
+- (void)tui_makeToast:(NSString *)message duration:(NSTimeInterval)duration position:(id)position style:(TUICSToastStyle *)style {
+    UIView *toast = [self tui_toastViewForMessage:message title:nil image:nil style:style];
+    [self tui_showToast:toast duration:duration position:position completion:nil];
 }
 
-- (void)makeToastParam:(NSDictionary *)info
+- (void)tui_makeToastParam:(NSDictionary *)info
               duration:(NSTimeInterval)duration
               position:(id)position
             style:(TUICSToastStyle *)style
@@ -102,110 +102,110 @@ static const NSString *TUICSToastQueueKey = @"TUICSToastQueueKey";
     NSString *title = info[@"title"];
     UIImage *image = info[@"image"];
     
-    UIView *toast = [self toastViewForMessage:message title:title image:image style:style];
-    [self showToast:toast duration:duration position:position completion:completion];
+    UIView *toast = [self tui_toastViewForMessage:message title:title image:image style:style];
+    [self tui_showToast:toast duration:duration position:position completion:completion];
 }
 
 #pragma mark - Show Toast Methods
 
-- (void)showToast:(UIView *)toast {
-    [self showToast:toast duration:[TUICSToastManager defaultDuration] position:[TUICSToastManager defaultPosition] completion:nil];
+- (void)tui_showToast:(UIView *)toast {
+    [self tui_showToast:toast duration:[TUICSToastManager tui_defaultDuration] position:[TUICSToastManager tui_defaultPosition] completion:nil];
 }
 
-- (void)showToast:(UIView *)toast duration:(NSTimeInterval)duration position:(id)position completion:(void (^)(BOOL didTap))completion {
+- (void)tui_showToast:(UIView *)toast duration:(NSTimeInterval)duration position:(id)position completion:(void (^)(BOOL didTap))completion {
     // sanity
     if (toast == nil) return;
 
     // store the completion block on the toast view
     objc_setAssociatedObject(toast, &TUICSToastCompletionKey, completion, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 
-    if ([TUICSToastManager isQueueEnabled] && [self.cs_activeToasts count] > 0) {
+    if ([TUICSToastManager tui_isQueueEnabled] && [self.tuics_activeToasts count] > 0) {
         // we're about to queue this toast view so we need to store the duration and position as well
         objc_setAssociatedObject(toast, &TUICSToastDurationKey, @(duration), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         objc_setAssociatedObject(toast, &TUICSToastPositionKey, position, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 
         // enqueue
-        [self.cs_toastQueue addObject:toast];
+        [self.tuics_toastQueue addObject:toast];
     } else {
         // present
-        [self cs_showToast:toast duration:duration position:position];
+        [self tuics_showToast:toast duration:duration position:position];
     }
 }
 
 #pragma mark - Hide Toast Methods
 
-- (void)hideToast {
-    [self hideToast:[[self cs_activeToasts] firstObject]];
+- (void)tui_hideToast {
+    [self tui_hideToast:[[self tuics_activeToasts] firstObject]];
 }
 
-- (void)hideToast:(UIView *)toast {
+- (void)tui_hideToast:(UIView *)toast {
     // sanity
-    if (!toast || ![[self cs_activeToasts] containsObject:toast]) return;
+    if (!toast || ![[self tuics_activeToasts] containsObject:toast]) return;
 
-    [self cs_hideToast:toast];
+    [self tuics_hideToast:toast];
 }
 
-- (void)hideAllToasts {
-    [self hideAllToasts:NO clearQueue:YES];
+- (void)tui_hideAllToasts {
+    [self tui_hideAllToasts:NO clearQueue:YES];
 }
 
-- (void)hideAllToasts:(BOOL)includeActivity clearQueue:(BOOL)clearQueue {
+- (void)tui_hideAllToasts:(BOOL)includeActivity clearQueue:(BOOL)clearQueue {
     if (clearQueue) {
-        [self clearToastQueue];
+        [self tui_clearToastQueue];
     }
 
-    for (UIView *toast in [self cs_activeToasts]) {
-        [self hideToast:toast];
+    for (UIView *toast in [self tuics_activeToasts]) {
+        [self tui_hideToast:toast];
     }
 
     if (includeActivity) {
-        [self hideToastActivity];
+        [self tui_hideToastActivity];
     }
 }
 
-- (void)clearToastQueue {
-    [[self cs_toastQueue] removeAllObjects];
+- (void)tui_clearToastQueue {
+    [[self tuics_toastQueue] removeAllObjects];
 }
 
 #pragma mark - Private Show/Hide Methods
 
-- (void)cs_showToast:(UIView *)toast duration:(NSTimeInterval)duration position:(id)position {
-    toast.center = [self cs_centerPointForPosition:position withToast:toast];
+- (void)tuics_showToast:(UIView *)toast duration:(NSTimeInterval)duration position:(id)position {
+    toast.center = [self tuics_centerPointForPosition:position withToast:toast];
     toast.alpha = 0.0;
 
-    if ([TUICSToastManager isTapToDismissEnabled]) {
-        UITapGestureRecognizer *recognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(cs_handleToastTapped:)];
+    if ([TUICSToastManager tui_isTapToDismissEnabled]) {
+        UITapGestureRecognizer *recognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tuics_handleToastTapped:)];
         [toast addGestureRecognizer:recognizer];
         toast.userInteractionEnabled = YES;
         toast.exclusiveTouch = YES;
     }
 
-    [[self cs_activeToasts] addObject:toast];
+    [[self tuics_activeToasts] addObject:toast];
 
     [self addSubview:toast];
 
-    [UIView animateWithDuration:[[TUICSToastManager sharedStyle] fadeDuration]
+    [UIView animateWithDuration:[[TUICSToastManager tui_sharedStyle] fadeDuration]
         delay:0.0
         options:(UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction)
         animations:^{
           toast.alpha = 1.0;
         }
         completion:^(BOOL finished) {
-          NSTimer *timer = [NSTimer timerWithTimeInterval:duration target:self selector:@selector(cs_toastTimerDidFinish:) userInfo:toast repeats:NO];
+          NSTimer *timer = [NSTimer timerWithTimeInterval:duration target:self selector:@selector(tuics_toastTimerDidFinish:) userInfo:toast repeats:NO];
           [[NSRunLoop mainRunLoop] addTimer:timer forMode:NSRunLoopCommonModes];
           objc_setAssociatedObject(toast, &TUICSToastTimerKey, timer, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         }];
 }
 
-- (void)cs_hideToast:(UIView *)toast {
-    [self cs_hideToast:toast fromTap:NO];
+- (void)tuics_hideToast:(UIView *)toast {
+    [self tuics_hideToast:toast fromTap:NO];
 }
 
-- (void)cs_hideToast:(UIView *)toast fromTap:(BOOL)fromTap {
+- (void)tuics_hideToast:(UIView *)toast fromTap:(BOOL)fromTap {
     NSTimer *timer = (NSTimer *)objc_getAssociatedObject(toast, &TUICSToastTimerKey);
     [timer invalidate];
 
-    [UIView animateWithDuration:[[TUICSToastManager sharedStyle] fadeDuration]
+    [UIView animateWithDuration:[[TUICSToastManager tui_sharedStyle] fadeDuration]
         delay:0.0
         options:(UIViewAnimationOptionCurveEaseIn | UIViewAnimationOptionBeginFromCurrentState)
         animations:^{
@@ -215,7 +215,7 @@ static const NSString *TUICSToastQueueKey = @"TUICSToastQueueKey";
           [toast removeFromSuperview];
 
           // remove
-          [[self cs_activeToasts] removeObject:toast];
+          [[self tuics_activeToasts] removeObject:toast];
 
           // execute the completion block, if necessary
           void (^completion)(BOOL didTap) = objc_getAssociatedObject(toast, &TUICSToastCompletionKey);
@@ -223,28 +223,28 @@ static const NSString *TUICSToastQueueKey = @"TUICSToastQueueKey";
               completion(fromTap);
           }
 
-          if ([self.cs_toastQueue count] > 0) {
+          if ([self.tuics_toastQueue count] > 0) {
               // dequeue
-              UIView *nextToast = [[self cs_toastQueue] firstObject];
-              [[self cs_toastQueue] removeObjectAtIndex:0];
+              UIView *nextToast = [[self tuics_toastQueue] firstObject];
+              [[self tuics_toastQueue] removeObjectAtIndex:0];
 
               // present the next toast
               NSTimeInterval duration = [objc_getAssociatedObject(nextToast, &TUICSToastDurationKey) doubleValue];
               id position = objc_getAssociatedObject(nextToast, &TUICSToastPositionKey);
-              [self cs_showToast:nextToast duration:duration position:position];
+              [self tuics_showToast:nextToast duration:duration position:position];
           }
         }];
 }
 
 #pragma mark - View Construction
 
-- (UIView *)toastViewForMessage:(NSString *)message title:(NSString *)title image:(UIImage *)image style:(TUICSToastStyle *)style {
+- (UIView *)tui_toastViewForMessage:(NSString *)message title:(NSString *)title image:(UIImage *)image style:(TUICSToastStyle *)style {
     // sanity
     if (message == nil && title == nil && image == nil) return nil;
 
     // default to the shared style
     if (style == nil) {
-        style = [TUICSToastManager sharedStyle];
+        style = [TUICSToastManager tui_sharedStyle];
     }
 
     // dynamically build a toast view with any combination of message, title, & image
@@ -371,49 +371,49 @@ static const NSString *TUICSToastQueueKey = @"TUICSToastQueueKey";
 
 #pragma mark - Storage
 
-- (NSMutableArray *)cs_activeToasts {
-    NSMutableArray *cs_activeToasts = objc_getAssociatedObject(self, &TUICSToastActiveKey);
-    if (cs_activeToasts == nil) {
-        cs_activeToasts = [[NSMutableArray alloc] init];
-        objc_setAssociatedObject(self, &TUICSToastActiveKey, cs_activeToasts, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+- (NSMutableArray *)tuics_activeToasts {
+    NSMutableArray *tuics_activeToasts = objc_getAssociatedObject(self, &TUICSToastActiveKey);
+    if (tuics_activeToasts == nil) {
+        tuics_activeToasts = [[NSMutableArray alloc] init];
+        objc_setAssociatedObject(self, &TUICSToastActiveKey, tuics_activeToasts, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
-    return cs_activeToasts;
+    return tuics_activeToasts;
 }
 
-- (NSMutableArray *)cs_toastQueue {
-    NSMutableArray *cs_toastQueue = objc_getAssociatedObject(self, &TUICSToastQueueKey);
-    if (cs_toastQueue == nil) {
-        cs_toastQueue = [[NSMutableArray alloc] init];
-        objc_setAssociatedObject(self, &TUICSToastQueueKey, cs_toastQueue, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+- (NSMutableArray *)tuics_toastQueue {
+    NSMutableArray *tuics_toastQueue = objc_getAssociatedObject(self, &TUICSToastQueueKey);
+    if (tuics_toastQueue == nil) {
+        tuics_toastQueue = [[NSMutableArray alloc] init];
+        objc_setAssociatedObject(self, &TUICSToastQueueKey, tuics_toastQueue, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
-    return cs_toastQueue;
+    return tuics_toastQueue;
 }
 
 #pragma mark - Events
 
-- (void)cs_toastTimerDidFinish:(NSTimer *)timer {
-    [self cs_hideToast:(UIView *)timer.userInfo];
+- (void)tuics_toastTimerDidFinish:(NSTimer *)timer {
+    [self tuics_hideToast:(UIView *)timer.userInfo];
 }
 
-- (void)cs_handleToastTapped:(UITapGestureRecognizer *)recognizer {
+- (void)tuics_handleToastTapped:(UITapGestureRecognizer *)recognizer {
     UIView *toast = recognizer.view;
     NSTimer *timer = (NSTimer *)objc_getAssociatedObject(toast, &TUICSToastTimerKey);
     [timer invalidate];
 
-    [self cs_hideToast:toast fromTap:YES];
+    [self tuics_hideToast:toast fromTap:YES];
 }
 
 #pragma mark - Activity Methods
 
-- (void)makeToastActivity:(id)position {
+- (void)tui_makeToastActivity:(id)position {
     // sanity
     UIView *existingActivityView = (UIView *)objc_getAssociatedObject(self, &TUICSToastActivityViewKey);
     if (existingActivityView != nil) return;
 
-    TUICSToastStyle *style = [TUICSToastManager sharedStyle];
+    TUICSToastStyle *style = [TUICSToastManager tui_sharedStyle];
 
     UIView *activityView = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, style.activitySize.width, style.activitySize.height)];
-    activityView.center = [self cs_centerPointForPosition:position withToast:activityView];
+    activityView.center = [self tuics_centerPointForPosition:position withToast:activityView];
     activityView.backgroundColor = style.backgroundColor;
     activityView.alpha = 0.0;
     activityView.autoresizingMask = (UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleTopMargin |
@@ -446,10 +446,10 @@ static const NSString *TUICSToastQueueKey = @"TUICSToastQueueKey";
                      completion:nil];
 }
 
-- (void)hideToastActivity {
+- (void)tui_hideToastActivity {
     UIView *existingActivityView = (UIView *)objc_getAssociatedObject(self, &TUICSToastActivityViewKey);
     if (existingActivityView != nil) {
-        [UIView animateWithDuration:[[TUICSToastManager sharedStyle] fadeDuration]
+        [UIView animateWithDuration:[[TUICSToastManager tui_sharedStyle] fadeDuration]
             delay:0.0
             options:(UIViewAnimationOptionCurveEaseIn | UIViewAnimationOptionBeginFromCurrentState)
             animations:^{
@@ -464,8 +464,8 @@ static const NSString *TUICSToastQueueKey = @"TUICSToastQueueKey";
 
 #pragma mark - Helpers
 
-- (CGPoint)cs_centerPointForPosition:(id)point withToast:(UIView *)toast {
-    TUICSToastStyle *style = [TUICSToastManager sharedStyle];
+- (CGPoint)tuics_centerPointForPosition:(id)point withToast:(UIView *)toast {
+    TUICSToastStyle *style = [TUICSToastManager tui_sharedStyle];
 
     UIEdgeInsets safeInsets = UIEdgeInsetsZero;
     if (@available(iOS 11.0, *)) {
@@ -599,45 +599,45 @@ static const NSString *TUICSToastQueueKey = @"TUICSToastQueueKey";
 
 #pragma mark - Singleton Methods
 
-+ (void)setSharedStyle:(TUICSToastStyle *)sharedStyle {
++ (void)tui_setSharedStyle:(TUICSToastStyle *)sharedStyle {
     [[self sharedManager] setSharedStyle:sharedStyle];
 }
 
-+ (TUICSToastStyle *)sharedStyle {
++ (TUICSToastStyle *)tui_sharedStyle {
     return [[self sharedManager] sharedStyle];
 }
 
-+ (void)setTapToDismissEnabled:(BOOL)tapToDismissEnabled {
++ (void)tui_setTapToDismissEnabled:(BOOL)tapToDismissEnabled {
     [[self sharedManager] setTapToDismissEnabled:tapToDismissEnabled];
 }
 
-+ (BOOL)isTapToDismissEnabled {
++ (BOOL)tui_isTapToDismissEnabled {
     return [[self sharedManager] isTapToDismissEnabled];
 }
 
-+ (void)setQueueEnabled:(BOOL)queueEnabled {
++ (void)tui_setQueueEnabled:(BOOL)queueEnabled {
     [[self sharedManager] setQueueEnabled:queueEnabled];
 }
 
-+ (BOOL)isQueueEnabled {
++ (BOOL)tui_isQueueEnabled {
     return [[self sharedManager] isQueueEnabled];
 }
 
-+ (void)setDefaultDuration:(NSTimeInterval)duration {
++ (void)tui_setDefaultDuration:(NSTimeInterval)duration {
     [[self sharedManager] setDefaultDuration:duration];
 }
 
-+ (NSTimeInterval)defaultDuration {
++ (NSTimeInterval)tui_defaultDuration {
     return [[self sharedManager] defaultDuration];
 }
 
-+ (void)setDefaultPosition:(id)position {
++ (void)tui_setDefaultPosition:(id)position {
     if ([position isKindOfClass:[NSString class]] || [position isKindOfClass:[NSValue class]]) {
         [[self sharedManager] setDefaultPosition:position];
     }
 }
 
-+ (id)defaultPosition {
++ (id)tui_defaultPosition {
     return [[self sharedManager] defaultPosition];
 }
 

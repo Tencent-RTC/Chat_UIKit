@@ -240,7 +240,7 @@ class TUIGroupMemberController_Minimalist: UIViewController, UITableViewDelegate
             self.adminDataprovier.settingAdmins(userModels: [user], callback: { [weak self] code, errorMsg in
                 guard let self = self else { return }
                 if code != 0 {
-                    self.view.makeToast(errorMsg ?? "")
+                    self.view.tui_makeToast(errorMsg ?? "")
                 } else {
                     data.role = V2TIMGroupMemberRole.GROUP_MEMBER_ROLE_ADMIN.rawValue
                 }
@@ -255,7 +255,7 @@ class TUIGroupMemberController_Minimalist: UIViewController, UITableViewDelegate
             self.adminDataprovier.removeAdmin(userID: identifier, callback: { [weak self] code, errorMsg in
                 guard let self = self else { return }
                 if code != 0 {
-                    self.view.makeToast(errorMsg ?? "")
+                    self.view.tui_makeToast(errorMsg ?? "")
                 } else {
                     data.role = V2TIMGroupMemberRole.GROUP_MEMBER_ROLE_MEMBER.rawValue
                 }

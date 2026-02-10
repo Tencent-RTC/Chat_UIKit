@@ -1,7 +1,7 @@
 Pod::Spec.new do |spec|
   spec.name         = 'TIMAppKit_Swift'
   spec.module_name  = 'TIMAppKit'
-  spec.version      = '8.7.7201'
+  spec.version      = '8.9.7511'
   spec.platform     = :ios
   spec.ios.deployment_target = '9.0'
   spec.license      = { :type => 'Proprietary',

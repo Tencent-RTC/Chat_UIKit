@@ -43,7 +43,6 @@ class TUIGroupRequestViewController: UIViewController, UITableViewDataSource, UI
     }
 
     deinit {
-        print("\(#function) dealloc")
         NotificationCenter.default.removeObserver(self)
     }
 

@@ -23,6 +23,18 @@ class TUIGroupPinPageViewController: UIViewController, UITableViewDelegate, UITa
     }
 
     private func setupViews() {
+        // Disable implicit animations during setup
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        
+        // Add bottomShadow first (bottom layer)
+        bottomShadow = UIView()
+        bottomShadow.backgroundColor = UIColor(white: 0, alpha: 0.5)
+        bottomShadow.isUserInteractionEnabled = false
+        bottomShadow.frame = .zero
+        bottomShadow.alpha = 0
+        view.addSubview(bottomShadow)
+        
         tableview = UITableView()
         tableview.contentInset = UIEdgeInsets.zero
         tableview.delegate = self
@@ -31,19 +43,27 @@ class TUIGroupPinPageViewController: UIViewController, UITableViewDelegate, UITa
         tableview.showsVerticalScrollIndicator = false
         tableview.showsHorizontalScrollIndicator = false
         tableview.backgroundColor = TUISwift.tuiChatDynamicColor("chat_pop_group_pin_back_color", defaultColor: "#F9F9F9")
+        tableview.clipsToBounds = true
+        tableview.frame = .zero
+        tableview.alpha = 0
         view.addSubview(tableview)
+        view.bringSubviewToFront(tableview)
 
         let headerView = UIView(frame: CGRect(x: 0, y: 0, width: view.frame.size.width, height: 0))
         tableview.tableHeaderView = headerView
 
-        customArrowView = UIView(frame: CGRect(x: 0, y: tableview.frame.size.height, width: tableview.frame.size.width, height: 100))
+        customArrowView = UIView(frame: .zero)
         customArrowView.backgroundColor = TUISwift.tuiChatDynamicColor("chat_pop_group_pin_back_color", defaultColor: "#F9F9F9")
+        customArrowView.clipsToBounds = true
+        customArrowView.alpha = 0
         view.addSubview(customArrowView)
+        view.bringSubviewToFront(customArrowView)
+        
         let arrowBackgroundView = UIView(frame: .zero)
         arrowBackgroundView.backgroundColor = .clear
         arrowBackgroundView.layer.cornerRadius = 5
         customArrowView.addSubview(arrowBackgroundView)
-        customArrowView.clipsToBounds = true
+        
         let arrow = UIImageView(frame: .zero)
         arrow.image = TUISwift.tuiChatBundleThemeImage("chat_pop_group_pin_up_arrow_img", defaultImage: "chat_up_arrow_icon")
         arrowBackgroundView.addSubview(arrow)
@@ -55,11 +75,8 @@ class TUIGroupPinPageViewController: UIViewController, UITableViewDelegate, UITa
             make.center.equalTo(arrowBackgroundView)
             make.size.equalTo(CGSize(width: 20, height: 20))
         }
-
-        bottomShadow = UIView()
-        bottomShadow.backgroundColor = UIColor(white: 0, alpha: 0.5)
-        bottomShadow.isUserInteractionEnabled = false
-        view.addSubview(bottomShadow)
+        
+        CATransaction.commit()
     }
 
     private func addSingleTapGesture() {
@@ -70,9 +87,11 @@ class TUIGroupPinPageViewController: UIViewController, UITableViewDelegate, UITa
 
     @objc private func singleTap(_ tap: UITapGestureRecognizer?) {
         UIView.animate(withDuration: 0.3, animations: {
-            self.tableview.frame = CGRect(x: 0, y: self.tableview.frame.origin.y, width: self.view.frame.size.width, height: 60)
-            self.customArrowView.frame = CGRect(x: 0, y: self.tableview.frame.maxY, width: self.view.frame.size.width, height: self.customArrowView.frame.size.height)
-            self.bottomShadow.frame = CGRect(x: 0, y: self.customArrowView.frame.maxY, width: self.view.frame.size.width, height: 0)
+            self.tableview.frame = CGRect(x: 0, y: self.tableview.frame.origin.y, width: self.view.frame.size.width, height: 0)
+            self.tableview.alpha = 0
+            self.customArrowView.frame = CGRect(x: 0, y: self.tableview.frame.maxY, width: self.view.frame.size.width, height: 0)
+            self.customArrowView.alpha = 0
+            self.bottomShadow.alpha = 0
         }) { finished in
             if finished {
                 self.dismiss(animated: false, completion: nil)

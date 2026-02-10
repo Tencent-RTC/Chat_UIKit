@@ -29,7 +29,7 @@ class TUISettingAdminController: UIViewController {
         dataProvider.loadData { [weak self] code, error in
             self?.tableView.reloadData()
             if code != 0 {
-                self?.view.makeToast(error ?? "")
+                self?.view.tui_makeToast(error ?? "")
             }
         }
     }
@@ -79,7 +79,7 @@ extension TUISettingAdminController: UITableViewDataSource, UITableViewDelegate 
                 self.dataProvider.settingAdmins(userModels: modelList) { [weak self] code, errorMsg in
                     guard let self = self else { return }
                     if code != 0 {
-                        self.view.makeToast(errorMsg ?? "")
+                        self.view.tui_makeToast(errorMsg ?? "")
                     }
                     self.tableView.reloadData()
                 }
@@ -103,7 +103,7 @@ extension TUISettingAdminController: UITableViewDataSource, UITableViewDelegate 
                 dataProvider.removeAdmin(userID: identifier) { [weak self] code, err in
                     guard let self else { return }
                     if code != 0 {
-                        self.view.makeToast(err ?? "")
+                        self.view.tui_makeToast(err ?? "")
                     }
                     self.tableView.reloadData()
                 }

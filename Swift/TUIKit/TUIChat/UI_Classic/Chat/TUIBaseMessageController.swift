@@ -1445,7 +1445,13 @@ public class TUIBaseMessageController: UITableViewController, TUIMessageCellDele
         var content = ""
 
         if let txtCell = sender as? TUITextMessageCell {
-            content = txtCell.selectContent ?? ""
+            // For AI chatbot messages, use textData?.content directly
+            if let conversationData = conversationData, conversationData.isAIConversation() {
+                content = txtCell.textData?.content ?? ""
+            }
+            else {
+                content = txtCell.selectContent ?? ""
+            }
         } else if let replyCell = sender as? TUIReplyMessageCell {
             content = replyCell.selectContent ?? ""
         } else if let referenceCell = sender as? TUIReferenceMessageCell {
@@ -1842,7 +1848,7 @@ public class TUIBaseMessageController: UITableViewController, TUIMessageCellDele
         }
         
         // Create AI typing placeholder message using TUIChatbotMessagePlaceholderCellData
-        let aiTypingData = TUIChatbotMessagePlaceholderCellData.createAIPlaceholderCellData()
+        let aiTypingData = TUIChatbotMessagePlaceholderCellData.createAIPlaceholderCellData(avatarUrl: conversationData?.faceUrl)
 
         // Send as placeholder message
         sendPlaceHolderUIMessage(aiTypingData)
