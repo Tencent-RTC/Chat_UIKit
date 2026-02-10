@@ -88,7 +88,6 @@ extension AppDelegate {
     }
 
     @objc func redpoint_setupTotalUnreadCount() {
-        print("[Redpoint] \(#function)")
         // Getting total unread count
         V2TIMManager.sharedInstance().getTotalUnreadMessageCount { [weak self] totalCount in
             self?.onTotalUnreadCountChanged(UInt(totalCount))
@@ -106,8 +105,6 @@ extension AppDelegate {
     }
 
     func onTotalUnreadCountChanged(_ totalUnreadCount: UInt) {
-        print("[Redpoint] \(#function), \(totalUnreadCount)")
-
         let total = totalUnreadCount
 
         guard let tab = TUITool.applicationKeywindow()?.rootViewController as? TUITabBarController else {
@@ -119,7 +116,6 @@ extension AppDelegate {
     }
 
     @objc func redpoint_clearUnreadMessage() {
-        print("[Redpoint] \(#function)")
         V2TIMManager.sharedInstance().cleanConversationUnreadMessageCount(conversationID: "", cleanTimestamp: 0, cleanSequence: 0) { [weak self] in
             TUITool.makeToast(NSLocalizedString("MarkAllMessageAsReadSucc", comment: ""))
             self?.onTotalUnreadCountChanged(0)
@@ -134,7 +130,6 @@ extension AppDelegate {
     }
 
     func onFriendApplicationCountChanged(_ applicationCount: Int) {
-        print("[Redpoint] \(#function), \(applicationCount)")
         guard let tab = TUITool.applicationKeywindow()?.rootViewController as? TUITabBarController else {
             return
         }

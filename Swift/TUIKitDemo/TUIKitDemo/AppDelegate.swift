@@ -48,7 +48,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, V2TIMConversationListener
         setupConfig()
         tryPreloadMainVC()
         tryAutoLogin()
-        TIMPushManager.addPushListener(listener: self);
+        TIMPushManager.addPushListener(listener: self)
         return true
     }
 
@@ -91,7 +91,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, V2TIMConversationListener
         return nav
     }
 
-    func applyPrivateBasicInfo() {
+    @objc func applyPrivateBasicInfo() {
         // Subclass override
     }
 
@@ -220,7 +220,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, V2TIMConversationListener
     // MARK: - V2TIMConversationListener
 
     @objc func onTotalUnreadMessageCountChanged(totalUnreadCount: UInt64) {
-        print("\(#function), totalUnreadCount:\(totalUnreadCount)")
+        print("onTotalUnreadMessageCountChanged, totalUnreadCount:\(totalUnreadCount)")
     }
 
     // MARK: V2TIMSDKListener
@@ -266,10 +266,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate, V2TIMConversationListener
         case TUIUserStatus.forceOffline:
             showKickOffAlert()
         case TUIUserStatus.reConnFailed:
-            print("\(#function), status:\(status)")
+            print("reConnFailed, status:\(status)")
         case TUIUserStatus.sigExpired:
             userSigExpiredAction()
-            print("\(#function), status:\(status)")
+            print("sigExpired, status:\(status)")
         default:
             break
         }
@@ -345,7 +345,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, V2TIMConversationListener
         let themeVc = TUIThemeSelectController()
         themeVc.disable = true
         themeVc.delegate = self
-        themeVc.view.makeToastActivity(TUICSToastPositionCenter)
+        themeVc.view.tui_makeToastActivity(TUICSToastPositionCenter)
         nav.pushViewController(themeVc, animated: false)
 
         DispatchQueue.main.async {
@@ -359,7 +359,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, V2TIMConversationListener
                     TUITool.applicationKeywindow()?.overrideUserInterfaceStyle = .light
                 }
             }
-            themeVc.view.hideToastActivity()
+            themeVc.view.tui_hideToastActivity()
             themeVc.disable = false
         }
     }
@@ -698,16 +698,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate, V2TIMConversationListener
 
     @objc func onRemoteNotificationReceived(_ notice: String?) -> Bool {
         /*
-         - If true is returned, TIMPush will no longer execute the built-in TUIKit offline push parsing logic, leaving it entirely to you to handle;
-                 let ext = notice
-                 let info = OfflinePushExtInfo.create(withExtString: ext)
-                 return true
-         
-        - If false is returned, TIMPush will continue to execute the built-in TUIKit offline push parsing logic and continue the callback - navigateToBuiltInChatViewController:groupID:
-               return false
-         
-        */
-        
+          - If true is returned, TIMPush will no longer execute the built-in TUIKit offline push parsing logic, leaving it entirely to you to handle;
+                  let ext = notice
+                  let info = OfflinePushExtInfo.create(withExtString: ext)
+                  return true
+
+         - If false is returned, TIMPush will continue to execute the built-in TUIKit offline push parsing logic and continue the callback - navigateToBuiltInChatViewController:groupID:
+                return false
+
+         */
+
         return false
     }
 
@@ -728,12 +728,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate, V2TIMConversationListener
         let userID = clickNotificationInfo["userID"]
         let groupID = clickNotificationInfo["groupID"]
         if userID != nil || groupID != nil {
-            self.navigateToBuiltInChatViewControllerImpl(userID, groupID: groupID)
-            self.clickNotificationInfo.removeAll()
+            navigateToBuiltInChatViewControllerImpl(userID, groupID: groupID)
+            clickNotificationInfo.removeAll()
         }
     }
 
-   @objc func navigateToBuiltInChatViewControllerImpl(_ userID: String?, groupID: String?) {
+    @objc func navigateToBuiltInChatViewControllerImpl(_ userID: String?, groupID: String?) {
         let tab: UITabBarController = getMainController()
         if tab.selectedIndex != 0 {
             tab.selectedIndex = 0
@@ -744,28 +744,29 @@ class AppDelegate: UIResponder, UIApplicationDelegate, V2TIMConversationListener
         guard let vc = nav.viewControllers.first else { return }
         // Check if it's ConversationController or ConversationController_Minimalist
         if !vc.isKind(of: NSClassFromString("ConversationController") ?? NSObject.self) &&
-           !vc.isKind(of: NSClassFromString("ConversationController_Minimalist") ?? NSObject.self) {
+            !vc.isKind(of: NSClassFromString("ConversationController_Minimalist") ?? NSObject.self)
+        {
             return
         }
-        
+
         // Use the correct method signature matching OC version: pushToChatViewController:userID:
         if vc.responds(to: NSSelectorFromString("pushToChatViewController:userID:")) {
             vc.perform(NSSelectorFromString("pushToChatViewController:userID:"), with: groupID, with: userID)
         }
     }
-    
+
     // MARK: - TIMPushListener
 
     func onRecvPushMessage(_ message: TIMPushMessage) {
-        NSLog("onRecvPushMessage:%@",message)
+        NSLog("onRecvPushMessage:%@", message)
     }
-    
+
     func onRevokePushMessage(_ messageID: String) {
-        NSLog("onRevokePushMessage:%@",messageID)
+        NSLog("onRevokePushMessage:%@", messageID)
     }
-    
+
     func onNotificationClicked(_ ext: String) {
-        NSLog("onNotificationClicked:%@",ext)
+        NSLog("onNotificationClicked:%@", ext)
     }
 }
 
