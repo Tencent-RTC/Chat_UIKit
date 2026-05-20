@@ -851,7 +851,7 @@
 "VoiceClone" = "音色克隆";
 "VoiceCloneInstruction" = "请录制一段10-18秒的语音，用于克隆您的专属音色";
 "VoiceCloneSampleText" = "建议朗读以下文字：\n\n\"大家好，我是您的专属语音助手，很高兴为您服务。今天天气真不错，希望您有一个愉快的心情。\"";
-"VoiceCloneTapToRecord" = "点击开始录音";
+"VoiceCloneTapToRecord" = "同意并点击开始录音";
 "VoiceCloneTapToStop" = "点击停止录音";
 "VoiceCloneRecordingComplete" = "录音完成";
 "VoiceCloneNamePlaceholder" = "请输入音色名称（可选）";
@@ -866,6 +866,7 @@
 "VoiceCloneMicPermissionMessage" = "请在设置中允许访问麦克风以录制语音";
 "VoiceCloneGoToSettings" = "去设置";
 "VoiceCloneDescription" = "录制语音克隆专属音色";
+"VoiceClonePrivacyNotice" = "请确保声音样本为您本人所有或已获合法授权。生成内容仅供文本消息文字转语音体验，严禁用于欺诈或侵权等违法用途。 因违规使用产生的一切法律后果，将由您自行承担。";
 
 // Voice Selection
 "VoiceSelection" = "音色选择";

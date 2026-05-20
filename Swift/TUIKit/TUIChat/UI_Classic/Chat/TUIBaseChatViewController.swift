@@ -74,6 +74,7 @@ public class TUIBaseChatViewController: UIViewController, TUIBaseMessageControll
                 _mediaProvider = TUIChatMediaDataProvider()
                 _mediaProvider?.listener = self
                 _mediaProvider?.presentViewController = self
+                _mediaProvider?.conversationID = conversationData?.conversationID
             }
             return _mediaProvider
         }
@@ -146,6 +147,8 @@ public class TUIBaseChatViewController: UIViewController, TUIBaseMessageControll
         setupInputMoreMenu()
         setupInputController()
         setupShortcutView()
+
+        mediaProvider?.restorePlaceholdersIfNeeded()
 
         let userInfo = ["TUIKitNotification_onMessageVCBottomMarginChanged_Margin": 0]
         NotificationCenter.default.post(name: NSNotification.Name("TUIKitNotification_onMessageVCBottomMarginChanged"), object: nil, userInfo: userInfo)
@@ -1528,9 +1531,9 @@ public class TUIBaseChatViewController: UIViewController, TUIBaseMessageControll
 
     // MARK: TUIChatMediaDataListener
 
-    public func onProvideImage(_ imageUrl: String) {
+    public func onProvideImage(_ imageUrl: String, placeHolderCellData: TUIMessageCellData?) {
         let message = V2TIMManager.sharedInstance().createImageMessage(imagePath: imageUrl)!
-        sendMessage(message)
+        sendMessage(message, placeHolderCellData: placeHolderCellData)
     }
 
     public func onProvideImageError(_ errorMessage: String) {

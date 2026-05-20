@@ -849,7 +849,7 @@
 "VoiceClone" = "音色克隆";
 "VoiceCloneInstruction" = "請錄製一段10-18秒的語音，用於克隆您的專屬音色";
 "VoiceCloneSampleText" = "建議朗讀以下文字：\n\n\"大家好，我是您的專屬語音助手，很高興為您服務。今天天氣真不錯，希望您有一個愉快的心情。\"";
-"VoiceCloneTapToRecord" = "點擊開始錄音";
+"VoiceCloneTapToRecord" = "同意並點擊開始錄音";
 "VoiceCloneTapToStop" = "點擊停止錄音";
 "VoiceCloneRecordingComplete" = "錄音完成";
 "VoiceCloneNamePlaceholder" = "請輸入音色名稱（可選）";
@@ -864,6 +864,7 @@
 "VoiceCloneMicPermissionMessage" = "請在設置中允許訪問麥克風以錄製語音";
 "VoiceCloneGoToSettings" = "去設置";
 "VoiceCloneDescription" = "錄製語音克隆專屬音色";
+"VoiceClonePrivacyNotice" = "請確保聲音樣本為您本人所有或已獲合法授權。生成內容僅供文本消息文字轉語音體驗，嚴禁用於欺詐或侵權等違法用途。因違規使用產生的一切法律後果，將由您自行承擔。請確保聲音樣本為您本人所有或已獲合法授權。生成內容僅供文本消息文字轉語音體驗，嚴禁用於欺詐或侵權等違法用途。因違規使用產生的一切法律後果，將由您自行承擔。";
 
 // Voice Selection
 "VoiceSelection" = "音色選擇";

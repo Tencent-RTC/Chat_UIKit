@@ -80,8 +80,14 @@ class TUIMergeMessageCellData: TUIMessageCellData {
                 splitStr = "\u{202C}:"
             }
             let result = str.components(separatedBy: splitStr)
-            let sender = result[0]
-            let detail = result[1].getLocalizableStringWithFaceContent()
+            var sender = ""
+            var detail = ""
+            if result.count > 0 {
+                sender = result[0]
+            }
+            if result.count > 1 {
+                detail = result[1].getLocalizableStringWithFaceContent()
+            }
             var dic: [String: NSAttributedString] = [:]
             if !sender.isEmpty {
                 let abstr = NSMutableAttributedString(string: sender, attributes: attribute)

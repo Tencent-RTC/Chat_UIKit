@@ -2,12 +2,10 @@ import AVFoundation
 import Foundation
 import MobileCoreServices
 import Photos
-import PhotosUI
 import SDWebImage
 import TIMCommon
 import UIKit
-
-typealias TUIChatMediaDataProviderResultCallback = (Bool, String?, String?) -> Void
+import AlbumPicker
 
 protocol TUIChatMediaDataProtocol: AnyObject {
     func selectPhoto()
@@ -17,7 +15,7 @@ protocol TUIChatMediaDataProtocol: AnyObject {
 }
 
 protocol TUIChatMediaDataListener: NSObjectProtocol {
-    func onProvideImage(_ imageUrl: String)
+    func onProvideImage(_ imageUrl: String, placeHolderCellData: TUIMessageCellData?)
     func onProvideImageError(_ errorMessage: String)
 
     func onProvideVideo(_ videoUrl: String, snapshot: String, duration: Int, placeHolderCellData: TUIMessageCellData?)
@@ -34,7 +32,7 @@ protocol TUIChatMediaDataListener: NSObjectProtocol {
 }
 
 extension TUIChatMediaDataListener {
-    func onProvideImage(_ imageUrl: String) {}
+    func onProvideImage(_ imageUrl: String, placeHolderCellData: TUIMessageCellData?) {}
     func onProvideImageError(_ errorMessage: String) {}
 
     func onProvideVideo(_ videoUrl: String, snapshot: String, duration: Int, placeHolderCellData: TUIMessageCellData?) {}
@@ -50,36 +48,22 @@ extension TUIChatMediaDataListener {
     func sendMessage(_ message: V2TIMMessage, placeHolderCellData: TUIMessageCellData) {}
 }
 
-class TUIChatMediaDataProvider: NSObject, PHPickerViewControllerDelegate, UINavigationControllerDelegate, UIImagePickerControllerDelegate, UIDocumentPickerDelegate, TUICameraViewControllerDelegate {
+class TUIChatMediaDataProvider: NSObject, UINavigationControllerDelegate, UIDocumentPickerDelegate, TUICameraViewControllerDelegate {
     weak var presentViewController: UIViewController?
     weak var listener: TUIChatMediaDataListener?
     var conversationID: String?
 
     // MARK: - Public API
-
-    func selectPhoto() {
-        DispatchQueue.main.async {
-            if #available(iOS 14.0, *) {
-                var configuration = PHPickerConfiguration()
-                configuration.filter = PHPickerFilter.any(of: [.images, .videos])
-                configuration.selectionLimit = 9
-                let picker = PHPickerViewController(configuration: configuration)
-                picker.delegate = self
-                picker.modalPresentationStyle = .fullScreen
-                picker.view.backgroundColor = .white
-                self.presentViewController?.present(picker, animated: true, completion: nil)
-            } else {
-                if UIImagePickerController.isSourceTypeAvailable(.photoLibrary) {
-                    let picker = UIImagePickerController()
-                    picker.sourceType = .photoLibrary
-                    picker.mediaTypes = UIImagePickerController.availableMediaTypes(for: .photoLibrary) ?? []
-                    picker.delegate = self
-                    self.presentViewController?.present(picker, animated: true, completion: nil)
-                }
-            }
-        }
+    func restorePlaceholdersIfNeeded() {
+        guard let listener = listener, let conversationID = conversationID, !conversationID.isEmpty else { return }
+        TUIAlbumPickerMediaSendManager.shared.restorePlaceholders(via: listener, conversationID: conversationID)
     }
 
+    func selectPhoto() {
+        guard let presentViewController = presentViewController, let listener = listener else { return }
+        TUIAlbumPickerMediaSendManager.shared.pickAlbumMedia(from: presentViewController, listener: listener, conversationID: conversationID)
+    }
+    
     func takePicture() {
         let actionBlock: () -> Void = { [weak self] in
             guard let self = self else { return }
@@ -216,7 +200,7 @@ class TUIChatMediaDataProvider: NSObject, PHPickerViewControllerDelegate, UINavi
             }
 
             FileManager.default.createFile(atPath: path, contents: data, attributes: nil)
-            self.listener?.onProvideImage(path)
+            self.listener?.onProvideImage(path, placeHolderCellData: nil)
         }
     }
 
@@ -414,278 +398,6 @@ class TUIChatMediaDataProvider: NSObject, PHPickerViewControllerDelegate, UINavi
         FileManager.default.createFile(atPath: imagePath, contents: imageData, attributes: nil)
 
         self.listener?.onProvideVideo(videoPath, snapshot: imagePath, duration: duration, placeHolderCellData: placeHolderCellData)
-    }
-
-    // MARK: - PHPickerViewControllerDelegate
-
-    @available(iOS 14, *)
-    func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
-        DispatchQueue.main.async {
-            picker.dismiss(animated: true, completion: nil)
-            TUITool.applicationKeywindow()?.endEditing(true)
-        }
-
-        if results.isEmpty {
-            return
-        }
-
-        for result in results {
-            self._dealPHPickerResultFinishPicking(result)
-        }
-    }
-
-    @available(iOS 14.0, *)
-    private func _dealPHPickerResultFinishPicking(_ result: PHPickerResult) {
-        let itemProvider = result.itemProvider
-        if itemProvider.hasItemConformingToTypeIdentifier(kUTTypeImage as String) {
-            itemProvider.loadDataRepresentation(forTypeIdentifier: kUTTypeImage as String) { [weak self] data, error in
-                guard let self else { return }
-                DispatchQueue.main.async {
-                    let succ = error == nil
-                    let message = error?.localizedDescription
-                    self.handleImagePick(succ: succ, message: message, imageData: data)
-                }
-            }
-        } else if itemProvider.hasItemConformingToTypeIdentifier(kUTTypeMPEG4 as String) {
-            itemProvider.loadDataRepresentation(forTypeIdentifier: kUTTypeMovie as String) { [weak self] data, _ in
-                guard let self else { return }
-                DispatchQueue.main.async {
-                    let fileName = "temp.mp4"
-                    let tempPath = NSTemporaryDirectory()
-                    let filePath = tempPath + fileName
-                    if FileManager.default.isDeletableFile(atPath: filePath) {
-                        try? FileManager.default.removeItem(atPath: filePath)
-                    }
-                    let newUrl = URL(fileURLWithPath: filePath)
-                    let flag = FileManager.default.createFile(atPath: filePath, contents: data, attributes: nil)
-                    self.transcodeIfNeed(succ: flag, message: flag ? nil : "video not found", videoUrl: newUrl)
-                }
-            }
-        } else if itemProvider.hasItemConformingToTypeIdentifier(kUTTypeMovie as String) {
-            if self.listener != nil && ((self.listener?.responds(to: Selector(("onProvidePlaceholderVideoSnapshot")))) != nil) {
-                self.listener?.onProvidePlaceholderVideoSnapshot("", snapImage: UIImage()) { _, placeHolderCellData in
-                    itemProvider.loadDataRepresentation(forTypeIdentifier: kUTTypeMovie as String) { [weak self] data, _ in
-                        guard let self else { return }
-                        DispatchQueue.main.async {
-                            let dateNow = Date()
-                            let timeSp = "\(Int(dateNow.timeIntervalSince1970 * 1000))"
-                            let fileName = "\(timeSp)_temp.mov"
-                            let tempPath = NSTemporaryDirectory()
-                            let filePath = tempPath + fileName
-                            if FileManager.default.isDeletableFile(atPath: filePath) {
-                                try? FileManager.default.removeItem(atPath: filePath)
-                            }
-                            let newUrl = URL(fileURLWithPath: filePath)
-                            let flag = FileManager.default.createFile(atPath: filePath, contents: data, attributes: nil)
-                            self.transcodeIfNeed(succ: flag, message: flag ? nil : "movie not found", videoUrl: newUrl, placeHolderCellData: placeHolderCellData)
-                        }
-                    }
-                }
-            }
-        } else {
-            let typeIdentifier = result.itemProvider.registeredTypeIdentifiers.first
-            itemProvider.loadFileRepresentation(forTypeIdentifier: typeIdentifier ?? "") { url, _ in
-                DispatchQueue.main.async {
-                    if let url = url, let data = try? Data(contentsOf: url) {
-                        _ = UIImage(data: data)
-
-                        /**
-                         * Can't get url when typeIdentifier is public.jepg on emulator:
-                         * There is a separate JEPG transcoding issue that only affects the simulator (63426347), please refer to
-                         * https://developer.apple.com/forums/thread/658135 for more information.
-                         */
-                    }
-                }
-            }
-        }
-    }
-
-    // MARK: - UIImagePickerController
-
-    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
-        picker.delegate = nil
-        picker.dismiss(animated: true) { [weak self] in
-            guard let self = self else { return }
-            let mediaType = info[.mediaType] as? String
-            if mediaType == kUTTypeImage as String {
-                var url: URL?
-                if #available(iOS 11.0, *) {
-                    url = info[.imageURL] as? URL
-                } else {
-                    url = info[.referenceURL] as? URL
-                }
-
-                var succ = true
-                var imageData: Data?
-                var errorMessage: String?
-                if let url = url {
-                    succ = true
-                    imageData = try? Data(contentsOf: url)
-                } else {
-                    succ = false
-                    errorMessage = "image not found"
-                }
-                self.handleImagePick(succ: succ, message: errorMessage, imageData: imageData)
-            } else if mediaType == kUTTypeMovie as String {
-                var url = info[.mediaURL] as? URL
-                if let url = url {
-                    self.transcodeIfNeed(succ: true, message: nil, videoUrl: url)
-                    return
-                }
-
-                var asset: PHAsset?
-                if #available(iOS 11.0, *) {
-                    asset = info[.phAsset] as? PHAsset
-                }
-                if let asset = asset {
-                    self.originURL(with: asset) { success, URL in
-                        self.transcodeIfNeed(succ: success, message: success ? nil : "origin url with asset not found", videoUrl: URL)
-                    }
-                    return
-                }
-
-                url = info[.referenceURL] as? URL
-                if let url = url {
-                    self.originURL(withReferenceURL: url) { success, URL in
-                        self.transcodeIfNeed(succ: success, message: success ? nil : "origin url with asset not found", videoUrl: URL)
-                    }
-                    return
-                }
-
-                self.transcodeIfNeed(succ: false, message: "not support the video", videoUrl: nil)
-            }
-        }
-    }
-
-    func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-        picker.dismiss(animated: true, completion: nil)
-    }
-
-    // Get the original file path based on UIImagePickerControllerReferenceURL
-    private func originURL(withReferenceURL URL: URL, completion: @escaping (Bool, URL?) -> Void) {
-        let queryInfo = self.dictionary(withURLQuery: URL.query ?? "")
-        var fileName = "temp.mp4"
-        if queryInfo.keys.contains("id") && queryInfo.keys.contains("ext") {
-            fileName = "\(queryInfo["id"] ?? "").\(queryInfo["ext"]?.lowercased() ?? "")"
-        }
-        let tempPath = NSTemporaryDirectory()
-        let filePath = tempPath + fileName
-        if FileManager.default.isDeletableFile(atPath: filePath) {
-            try? FileManager.default.removeItem(atPath: filePath)
-        }
-        let newUrl = Foundation.URL(fileURLWithPath: filePath)
-
-        let fetchResult = PHAsset.fetchAssets(withALAssetURLs: [URL], options: nil)
-        guard let asset = fetchResult.firstObject else {
-            completion(false, nil)
-            return
-        }
-        let resources = PHAssetResource.assetResources(for: asset)
-        guard let resource = resources.first else {
-            completion(false, nil)
-            return
-        }
-        let options = PHAssetResourceRequestOptions()
-        options.isNetworkAccessAllowed = true
-
-        FileManager.default.createFile(atPath: filePath, contents: nil, attributes: nil)
-        guard let fileHandle = FileHandle(forWritingAtPath: filePath) else {
-            try? FileManager.default.removeItem(atPath: filePath)
-            completion(false, nil)
-            return
-        }
-
-        PHAssetResourceManager.default().requestData(for: resource, options: options, dataReceivedHandler: { data in
-            if #available(iOS 13.4, *) {
-                try? fileHandle.write(contentsOf: data)
-            } else {
-                fileHandle.write(data)
-            }
-        }, completionHandler: { error in
-            if #available(iOS 13.0, *) {
-                try? fileHandle.close()
-            } else {
-                fileHandle.closeFile()
-            }
-
-            if let error = error {
-                print("Error loading asset data: \(error.localizedDescription)")
-                try? FileManager.default.removeItem(atPath: filePath)
-                completion(false, nil)
-                return
-            }
-
-            let flag = FileManager.default.fileExists(atPath: filePath)
-            if !flag {
-                try? FileManager.default.removeItem(atPath: filePath)
-            }
-            completion(flag, newUrl)
-        })
-    }
-
-    private func originURL(with asset: PHAsset, completion: @escaping (Bool, URL?) -> Void) {
-        let resources = PHAssetResource.assetResources(for: asset)
-        guard !resources.isEmpty else {
-            completion(false, nil)
-            return
-        }
-
-        let options = PHAssetResourceRequestOptions()
-        options.isNetworkAccessAllowed = false
-        let fileName = "temp.mp4"
-        let tempPath = NSTemporaryDirectory()
-        let filePath = tempPath + fileName
-
-        if FileManager.default.isDeletableFile(atPath: filePath) {
-            try? FileManager.default.removeItem(atPath: filePath)
-        }
-
-        FileManager.default.createFile(atPath: filePath, contents: nil, attributes: nil)
-        guard let fileHandle = FileHandle(forWritingAtPath: filePath) else {
-            try? FileManager.default.removeItem(atPath: filePath)
-            completion(false, nil)
-            return
-        }
-
-        let newUrl = URL(fileURLWithPath: filePath)
-        var hasError = false
-
-        PHAssetResourceManager.default().requestData(for: resources.first!, options: options, dataReceivedHandler: { data in
-            guard !hasError else { return }
-
-            if data.isEmpty {
-                hasError = true
-                return
-            }
-
-            if #available(iOS 13.4, *) {
-                do {
-                    try fileHandle.write(contentsOf: data)
-                } catch {
-                    hasError = true
-                }
-            } else {
-                fileHandle.write(data)
-            }
-        }, completionHandler: { error in
-            if #available(iOS 13.0, *) {
-                try? fileHandle.close()
-            } else {
-                fileHandle.closeFile()
-            }
-
-            if error != nil || hasError {
-                try? FileManager.default.removeItem(atPath: filePath)
-                completion(false, nil)
-                return
-            }
-
-            let flag = FileManager.default.fileExists(atPath: filePath)
-            if !flag {
-                try? FileManager.default.removeItem(atPath: filePath)
-            }
-            completion(flag, newUrl)
-        })
     }
 
     private func dictionary(withURLQuery query: String) -> [String: String] {

@@ -1,9 +1,9 @@
 Pod::Spec.new do |spec|
   spec.name         = 'TUIPollPlugin_Swift'
   spec.module_name  = 'TUIPollPlugin'
-  spec.version      = '8.9.7511'
+  spec.version      = '8.9.7544'
   spec.platform     = :ios 
-  spec.ios.deployment_target = '10.0'
+  spec.ios.deployment_target = '13.0'
   spec.license      = { :type => 'Proprietary',
       :text => <<-LICENSE
         copyright 2017 tencent Ltd. All rights reserved.
@@ -16,7 +16,7 @@ Pod::Spec.new do |spec|
   
   spec.requires_arc = true
 
-  spec.source = { :http => 'https://im.sdk.cloud.tencent.cn/download/tuiplugin/8.9.7511/ios/TUIPollPlugin_Swift_8.9.7511.xcframework.zip'}
+  spec.source = { :http => 'https://im.sdk.cloud.tencent.cn/download/tuiplugin/8.9.7544/ios/TUIPollPlugin_Swift_8.9.7544.xcframework.zip'}
   spec.vendored_frameworks = 'TUIPollPlugin.xcframework'
   spec.resource_bundle = {
       "#{spec.module_name}_Privacy" => '**/TUIPollPlugin.xcframework/ios-arm64/TUIPollPlugin.framework/PrivacyInfo.xcprivacy'

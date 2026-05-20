@@ -1,7 +1,7 @@
 Pod::Spec.new do |spec|
   spec.name         = 'TUIVoiceToTextPlugin_Swift'
   spec.module_name  = 'TUIVoiceToTextPlugin'
-  spec.version      = '8.9.7511'
+  spec.version      = '8.9.7544'
   spec.platform     = :ios 
   spec.ios.deployment_target = '9.0'
   spec.license      = { :type => 'Proprietary',

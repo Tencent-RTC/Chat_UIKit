@@ -102,6 +102,28 @@ class TUIVoiceCloneController: UIViewController {
         return label
     }()
     
+    private lazy var privacyNoticeLabel: UILabel = {
+        let label = UILabel()
+        let attachment = NSTextAttachment()
+        attachment.image = UIImage(systemName: "exclamationmark.circle.fill")?.withTintColor(Colors.grayText, renderingMode: .alwaysOriginal)
+        attachment.bounds = CGRect(x: 0, y: -1.5, width: 12, height: 12)
+        let iconString = NSAttributedString(attachment: attachment)
+        let textString = NSAttributedString(
+            string: " " + TUISwift.timCommonLocalizableString("VoiceClonePrivacyNotice"),
+            attributes: [
+                .font: UIFont.systemFont(ofSize: 11, weight: .regular),
+                .foregroundColor: Colors.grayText
+            ]
+        )
+        let combined = NSMutableAttributedString()
+        combined.append(iconString)
+        combined.append(textString)
+        label.attributedText = combined
+        label.numberOfLines = 0
+        label.textAlignment = .center
+        return label
+    }()
+    
     private lazy var voiceNameTextField: UITextField = {
         let textField = UITextField()
         textField.placeholder = TUISwift.timCommonLocalizableString("VoiceCloneNamePlaceholder")
@@ -178,6 +200,7 @@ class TUIVoiceCloneController: UIViewController {
         contentView.addSubview(timerLabel)
         contentView.addSubview(recordButton)
         contentView.addSubview(recordHintLabel)
+        contentView.addSubview(privacyNoticeLabel)
         contentView.addSubview(voiceNameTextField)
         contentView.addSubview(submitButton)
         
@@ -229,8 +252,14 @@ class TUIVoiceCloneController: UIViewController {
             make.centerX.equalToSuperview()
         }
         
+        privacyNoticeLabel.snp.makeConstraints { make in
+            make.top.equalTo(recordHintLabel.snp.bottom).offset(16)
+            make.leading.equalToSuperview().offset(32)
+            make.trailing.equalToSuperview().offset(-32)
+        }
+        
         voiceNameTextField.snp.makeConstraints { make in
-            make.top.equalTo(recordHintLabel.snp.bottom).offset(32)
+            make.top.equalTo(privacyNoticeLabel.snp.bottom).offset(24)
             make.leading.equalToSuperview().offset(24)
             make.trailing.equalToSuperview().offset(-24)
             make.height.equalTo(44)

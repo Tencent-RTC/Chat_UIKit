@@ -137,7 +137,7 @@ class TUIVideoMessageCell: TUIBubbleMessageCell, TUIMessageProgressManagerDelega
             
             videoTranscodingObservation = self.videoData?.observe(\.videoTranscodingProgress, options: [.new, .initial]) { [weak self] _, change in
                 guard let self = self, let progress = change.newValue else { return }
-                let factor = 0.3
+                let factor = 0.6
                 self.animateCircleView.progress = progress * 100 * factor
             }
             if let thumbImage = videoData.thumbImage {
@@ -194,7 +194,7 @@ class TUIVideoMessageCell: TUIBubbleMessageCell, TUIMessageProgressManagerDelega
                 uploadProgressObservation = self.videoData?.observe(\.uploadProgress, options: [.new, .initial]) { [weak self] _, change in
                     guard let self = self, var progress = change.newValue else { return }
                     if (videoData.placeHolder?.videoTranscodingProgress ?? 0) > 0 {
-                        progress = max(progress, 30)
+                        progress = max(progress, 60)
                     }
                     self.animateCircleView.progress = Double(progress)
                     if progress >= 100 || progress == 0 {

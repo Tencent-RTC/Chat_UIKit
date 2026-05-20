@@ -851,7 +851,7 @@
 "VoiceClone" = "Voice Clone";
 "VoiceCloneInstruction" = "Please record 10-18 seconds of audio to clone your custom voice";
 "VoiceCloneSampleText" = "Suggested text to read:\n\n\"Hello everyone, I am your personal voice assistant, happy to serve you. The weather is really nice today, hope you have a pleasant day.\"";
-"VoiceCloneTapToRecord" = "Tap to start recording";
+"VoiceCloneTapToRecord" = "Agree and tap to start recording";
 "VoiceCloneTapToStop" = "Tap to stop recording";
 "VoiceCloneRecordingComplete" = "Recording complete";
 "VoiceCloneNamePlaceholder" = "Enter voice name (optional)";
@@ -866,6 +866,7 @@
 "VoiceCloneMicPermissionMessage" = "Please allow microphone access in Settings to record audio";
 "VoiceCloneGoToSettings" = "Go to Settings";
 "VoiceCloneDescription" = "Record audio to clone custom voice";
+"VoiceClonePrivacyNotice" = "Please ensure that the voice sample is owned by you or has been legally authorized. The generated content is for text-to-speech experience of message content only, and must not be used for illegal purposes such as fraud or infringement. You will be solely responsible for any legal consequences arising from misuse.";
 
 // Voice Selection
 "VoiceSelection" = "Voice Selection";

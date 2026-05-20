@@ -8,22 +8,22 @@ target 'TUIKitDemo' do
   use_modular_headers!
   # Pods for Example
   pod 'TIMAppKit_Swift', :path => "../TUIKit/TIMAppKit"
-  pod 'TUICore', :path => "../TUIKit/TUICore"
-  pod 'TIMCommon_Swift', :path => "../TUIKit/TIMCommon"
-  pod 'TUIChat_Swift', :path => "../TUIKit/TUIChat"
-  pod 'TUIConversation_Swift', :path => "../TUIKit/TUIConversation"
-  pod 'TUIContact_Swift', :path => "../TUIKit/TUIContact"
-  pod 'TUISearch_Swift', :path => "../TUIKit/TUISearch"
-  pod 'TUITranslationPlugin_Swift', :path => "../TUIKit/TUITranslationPlugin"
-  pod 'TUIVoiceToTextPlugin_Swift', :path => "../TUIKit/TUIVoiceToTextPlugin"
-  pod 'TUITextToVoicePlugin_Swift', :path => "../TUIKit/TUITextToVoicePlugin"
-  pod 'TUIEmojiPlugin_Swift', :path => "../TUIKit/TUIEmojiPlugin"
-  pod 'TUIOfficialAccountPlugin_Swift', :path => "../TUIKit/TUIOfficialAccountPlugin"
+  pod 'TUICore', '8.9.7544'
+  pod 'TIMCommon_Swift', '8.9.7544'
+  pod 'TUIChat_Swift', '8.9.7544'
+  pod 'TUIConversation_Swift', '8.9.7544'
+  pod 'TUIContact_Swift', '8.9.7544'
+  pod 'TUISearch_Swift', '8.9.7544'
+  pod 'TUITranslationPlugin_Swift', '8.9.7544'
+  pod 'TUIVoiceToTextPlugin_Swift', '8.9.7544'
+  pod 'TUITextToVoicePlugin_Swift', '8.9.7544'
+  pod 'TUIEmojiPlugin_Swift', '8.9.7544'
+  pod 'TUIOfficialAccountPlugin_Swift', '8.9.7544'
   pod 'TIMPush', '8.7.7201'
-  pod 'TUIConversationGroupPlugin_Swift', '8.9.7511'
-  pod 'TUIConversationMarkPlugin_Swift', '8.9.7511'
-  pod 'TUIPollPlugin_Swift', '8.9.7511'
-  pod 'TUIGroupNotePlugin_Swift', '8.9.7511'
+  pod 'TUIConversationGroupPlugin_Swift', '8.9.7544'
+  pod 'TUIConversationMarkPlugin_Swift', '8.9.7544'
+  pod 'TUIPollPlugin_Swift', '8.9.7544'
+  pod 'TUIGroupNotePlugin_Swift', '8.9.7544'
   
   pod 'TXIMSDK_Plus_iOS_XCFramework', '8.9.7511'
   pod 'TUICallKit_Swift', '4.0.2'

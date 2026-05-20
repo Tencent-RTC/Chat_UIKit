@@ -13,7 +13,7 @@
 "TUIChatCallTimeoutInCaller" = "Call wasn't answered";
 "TUIChatCallTimeoutInCallee" = "Call canceled by caller";
 "TUIChatCallLinebusyInCaller" = "Line busy";
-"TUIChatCallLinebusyInCallee" = "Call canceled by caller";
+"TUIChatCallLinebusyInCallee" = "Line busy, call not answered";
 "TUIChatCallSend" = "Start call";
 "TUIChatCallAccept" = "Answered";
 "TUIChatCallSwitchToAudio" = "Switch to audio call";

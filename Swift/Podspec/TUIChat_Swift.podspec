@@ -1,9 +1,9 @@
 Pod::Spec.new do |spec|
   spec.name         = 'TUIChat_Swift'
   spec.module_name  = 'TUIChat'
-  spec.version      = '8.9.7511'
+  spec.version      = '8.9.7544'
   spec.platform     = :ios
-  spec.ios.deployment_target = '9.0'
+  spec.ios.deployment_target = '13.0'
   spec.license      = { :type => 'Proprietary',
       :text => <<-LICENSE
         copyright 2017 tencent Ltd. All rights reserved.
@@ -18,7 +18,7 @@ Pod::Spec.new do |spec|
 
   spec.requires_arc = true
 
-  spec.source = { :http => 'https://im.sdk.cloud.tencent.cn/download/tuikit/8.9.7511/ios/TUIChat_Swift.zip?time=1'}
+  spec.source = { :http => 'https://im.sdk.cloud.tencent.cn/download/tuikit/8.9.7544/ios/TUIChat_Swift.zip?time=1'}
 
   spec.default_subspec = 'ALL'
 
@@ -26,7 +26,8 @@ Pod::Spec.new do |spec|
     commonModel.source_files = '**/TUIChat/CommonModel/*.{h,m,mm,swift}'
     commonModel.dependency 'TXIMSDK_Plus_iOS_XCFramework'
     commonModel.dependency 'TUICore'
-    commonModel.dependency 'TIMCommon_Swift','~> 8.9.7511'
+    commonModel.dependency 'TIMCommon_Swift','~> 8.9.7544'
+    commonModel.dependency 'AlbumPicker', '~> 1.0'
     commonModel.dependency 'SDWebImage'
     commonModel.dependency 'SnapKit'
   end

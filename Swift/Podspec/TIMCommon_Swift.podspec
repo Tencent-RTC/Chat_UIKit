@@ -1,9 +1,9 @@
 Pod::Spec.new do |spec|
   spec.name         = 'TIMCommon_Swift'
   spec.module_name  = 'TIMCommon'
-  spec.version      = '8.9.7511'
+  spec.version      = '8.9.7544'
   spec.platform     = :ios 
-  spec.ios.deployment_target = '9.0'
+  spec.ios.deployment_target = '13.0'
   spec.license      = { :type => 'Proprietary',
       :text => <<-LICENSE
         copyright 2017 tencent Ltd. All rights reserved.
@@ -17,7 +17,7 @@ Pod::Spec.new do |spec|
 
   spec.requires_arc = true
 
-  spec.source = { :http => 'https://im.sdk.cloud.tencent.cn/download/tuikit/8.9.7511/ios/TIMCommon_Swift.zip?time=6'}
+  spec.source = { :http => 'https://im.sdk.cloud.tencent.cn/download/tuikit/8.9.7544/ios/TIMCommon_Swift.zip?time=6'}
 
   spec.subspec 'CommonModel' do |commonModel|
         commonModel.source_files = ['**/TIMCommon/CommonModel/*.{h,m,mm,swift}', '**/TIMCommon/CommonModel/TUIAttributedLabel/**/*.{h,m,mm,swift}']

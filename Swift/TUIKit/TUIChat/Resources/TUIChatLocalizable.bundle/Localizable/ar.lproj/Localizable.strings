@@ -13,7 +13,7 @@
 "TUIChatCallTimeoutInCaller" = "لا يوجد رد من الطرف الآخر";
 "TUIChatCallTimeoutInCallee" = "تم الإلغاء من الطرف الآخر";
 "TUIChatCallLinebusyInCaller" = "الطرف الآخر مشغول";
-"TUIChatCallLinebusyInCallee" = "تم الإلغاء من الطرف الآخر";
+"TUIChatCallLinebusyInCallee" = "الخط مشغول، لم يتم الرد";
 "TUIChatCallSend" = "بدء المكالمة";
 "TUIChatCallAccept" = "قبول المكالمة";
 "TUIChatCallSwitchToAudio" = "تحويل الفيديو إلى صوت";
