@@ -19,7 +19,7 @@ target 'TUIKitDemo' do
   pod 'TUITextToVoicePlugin_Swift', '9.0.7652'
   pod 'TUIEmojiPlugin_Swift', '9.0.7652'
   pod 'TUIOfficialAccountPlugin_Swift', '9.0.7652'
-  pod 'TIMPush', '8.7.7201'
+  pod 'TIMPush', '9.0.7652'
   pod 'TUIConversationGroupPlugin_Swift', '9.0.7652'
   pod 'TUIConversationMarkPlugin_Swift', '9.0.7652'
   pod 'TUIPollPlugin_Swift', '9.0.7652'
@@ -40,7 +40,7 @@ target 'pushservice' do
   use_frameworks!
   use_modular_headers!
   
-  pod 'TIMPush', '8.7.7201'
+  pod 'TIMPush', '9.0.7652'
   end
   
   #Pods config

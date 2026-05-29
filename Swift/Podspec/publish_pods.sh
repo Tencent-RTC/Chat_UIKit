@@ -114,6 +114,8 @@ DEFAULT_PODS=(
   "TUIOfficialAccountPlugin_Swift"
   "TUIConversationGroupPlugin_Swift"
   "TUIConversationMarkPlugin_Swift"
+  "TIMPush"
+  "TPush"
 )
 # --------------------------------------------------------------------------
 
@@ -178,7 +180,8 @@ bump_podspec_version() {
 # 把 podspec 三处版本号统一改成 new_version:
 #   1) spec.version
 #   2) spec.source 下载 URL 里的 x.y.z 版本段 (URL 里只会出现该 pod 自身版本)
-#   3) 依赖 ~> 约束 (仅替换旧 TUIKit 版本, 避免误伤 SnapKit 等三方库的 ~> x.y.z)
+#   3) 依赖版本约束 (~>, >=, >, <=, <, ==) 中"等于旧版本"的部分
+#      只替换与旧版本完全一致的约束, 避免误伤 SnapKit / AlbumPicker 等三方库
 # 返回:
 #   0 成功 / 1 入参非法或文件不存在
 bump_podspec_all() {
@@ -196,11 +199,12 @@ bump_podspec_all() {
     "/spec\.source[[:space:]]*=/ s/[0-9]+\.[0-9]+\.[0-9]+/${new_version}/g" \
     "$podspec"
 
-  # 3) 依赖 ~> 约束 (只改旧 TUIKit 版本)
+  # 3) 依赖版本约束: 把"等于旧版本"的约束统一改到新版本
+  #    (~> >= <= == > < 都覆盖; 仅当版本号==旧版本时才替换, 不动三方库)
   if [[ -n "$old_version" && "$old_version" != "$new_version" ]]; then
     local old_re="${old_version//./\\.}"
     _sed_inplace \
-      "s/(~>[[:space:]]*)${old_re}/\1${new_version}/g" \
+      "s/(~>|>=|<=|==|>|<)([[:space:]]*)${old_re}/\1\2${new_version}/g" \
       "$podspec"
   fi
   return 0
