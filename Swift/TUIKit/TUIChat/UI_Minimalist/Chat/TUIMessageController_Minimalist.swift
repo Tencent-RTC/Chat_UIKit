@@ -318,7 +318,7 @@ class TUIMessageController_Minimalist: TUIBaseMessageController_Minimalist, TUIC
         var msgAbstract = ""
         if let replyCell = cell as? TUIReplyMessageCell_Minimalist {
             let cellData = replyCell.replyData
-            originMsgID = cellData?.messageRootID ?? ""
+            originMsgID = cellData?.originMsgID ?? ""
             msgAbstract = cellData?.msgAbstract ?? ""
         } else if let referenceCell = cell as? TUIReferenceMessageCell_Minimalist {
             let cellData = referenceCell.referenceData
@@ -326,7 +326,13 @@ class TUIMessageController_Minimalist: TUIBaseMessageController_Minimalist, TUIC
             msgAbstract = cellData?.msgAbstract ?? ""
         }
 
-        guard let dataProvider = messageDataProvider as? TUIMessageSearchDataProvider else { return }
+        guard !originMsgID.isEmpty,
+              let dataProvider = messageDataProvider as? TUIMessageSearchDataProvider
+        else {
+            TUITool.makeToast(TUISwift.timCommonLocalizableString("TUIKitReplyMessageNotFoundOriginMessage"))
+            return
+        }
+
         dataProvider.findMessages(msgIDs: [originMsgID]) { [weak self] success, _, msgs in
             guard let self = self else { return }
 
@@ -345,26 +351,7 @@ class TUIMessageController_Minimalist: TUIBaseMessageController_Minimalist, TUIC
                 return
             }
 
-            if cell is TUIReplyMessageCell_Minimalist {
-                self.jumpDetailPageByMessage(message)
-            } else if cell is TUIReferenceMessageCell_Minimalist {
-                self.locateAssignMessage(message, matchKeyWord: msgAbstract)
-            }
-        }
-    }
-
-    func jumpDetailPageByMessage(_ message: V2TIMMessage) {
-        guard let uiMsgs = messageDataProvider?.transUIMsgFromIMMsg([message]), uiMsgs.count > 0 else {
-            return
-        }
-        messageDataProvider?.preProcessMessage(uiMsgs) { [weak self] in
-            guard let self else { return }
-            for cellData in uiMsgs {
-                if cellData.innerMessage?.msgID == message.msgID {
-                    self.onJumpToRepliesDetailPage(cellData)
-                    return
-                }
-            }
+            self.locateAssignMessage(message, matchKeyWord: msgAbstract)
         }
     }
 
@@ -423,19 +410,6 @@ class TUIMessageController_Minimalist: TUIBaseMessageController_Minimalist, TUIC
             } else {
                 TUIChatSmallTongueManager_Minimalist.removeTongue(type: .receiveNewMsg)
             }
-        }
-
-        if let uiMsg = uiMsg as? TUIReplyMessageCellData,
-           let messageRootID = uiMsg.messageRootID
-        {
-            let revokeMsgID = uiMsg.msgID
-            (messageDataProvider as? TUIMessageSearchDataProvider)?.findMessages(msgIDs: [messageRootID], callback: { [weak self] success, _, msgs in
-                guard self != nil else { return }
-
-                if success, let message = msgs?.first {
-                    TUIChatModifyMessageHelper.shared.modifyMessage(message, revokeMsgID: revokeMsgID)
-                }
-            })
         }
 
         for cellData in messageDataProvider?.uiMsgs ?? [] {

@@ -25,6 +25,8 @@ extension TUIMessageDataProvider {
             let cellData = TUIMessageDataProvider.convertToCellData(from: originMessage!)
             replyCellData.originCellData = cellData
 
+            replyCellData.updateQuoteInfo(from: cellData, originMessage: originMessage)
+
             if let imageData = cellData as? TUIImageMessageCellData {
                 imageData.downloadImage(type: .thumb)
                 replyCellData.quoteData = replyCellData.getQuoteData(originCellData: imageData)

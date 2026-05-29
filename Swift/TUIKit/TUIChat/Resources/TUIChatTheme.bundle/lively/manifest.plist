@@ -26,6 +26,8 @@
 	<string>#FFFFFF</string>
 	<key>chat_input_text_color</key>
 	<string>#000000</string>
+	<key>chat_input_text_placeholder_color</key>
+	<string>#888888</string>
 	<key>chat_face_page_control_current_color</key>
 	<string>#7D7D7D</string>
 	<key>chat_face_page_control_color</key>

@@ -661,37 +661,24 @@ public class TUIBaseChatViewController: UIViewController, TUIBaseMessageControll
     func loadDraft() {
         guard let draft = conversationData?.draftText, !draft.isEmpty else { return }
         do {
-            if let data = draft.data(using: .utf8), let jsonDict = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
+            if let data = draft.data(using: .utf8),
+               let jsonDict = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any]
+            {
                 let draftContent = jsonDict["content"] as? String ?? ""
                 var locations: [[NSValue: NSAttributedString]]? = nil
                 let formatEmojiString = draftContent.getAdvancedFormatEmojiString(withFont: kTUIInputNormalFont, textColor: kTUIInputNormalTextColor, emojiLocations: &locations)
                 inputController.inputBar?.addDraftToInputBar(formatEmojiString)
 
-                if let messageRootID = jsonDict["messageRootID"] as? String,
-                   let reply = jsonDict["messageReply"] as? [String: Any],
-                   reply.keys.contains("messageID"),
-                   reply.keys.contains("messageAbstract"),
-                   reply.keys.contains("messageSender"),
-                   reply.keys.contains("messageType"),
-                   reply.keys.contains("version")
-                {
-                    if let version = reply["version"] as? Int, version <= kDraftMessageReplyVersion {
-                        if !messageRootID.isEmpty {
-                            let replyPreviewData = TUIReplyPreviewData()
-                            replyPreviewData.msgID = reply["messageID"] as? String ?? ""
-                            replyPreviewData.msgAbstract = reply["messageAbstract"] as? String ?? ""
-                            replyPreviewData.sender = reply["messageSender"] as? String ?? ""
-                            replyPreviewData.type = reply["messageType"] as? V2TIMElemType ?? V2TIMElemType.ELEM_TYPE_NONE
-                            replyPreviewData.messageRootID = messageRootID
-                            inputController.showReplyPreview(replyPreviewData)
-                        } else {
-                            let referencePreviewData = TUIReferencePreviewData()
-                            referencePreviewData.msgID = reply["messageID"] as? String ?? ""
-                            referencePreviewData.msgAbstract = reply["messageAbstract"] as? String ?? ""
-                            referencePreviewData.sender = reply["messageSender"] as? String ?? ""
-                            referencePreviewData.type = reply["messageType"] as? V2TIMElemType ?? V2TIMElemType.ELEM_TYPE_NONE
-                            inputController.showReferencePreview(referencePreviewData)
-                        }
+                if let quotedMsgID = jsonDict["quotedMessageID"] as? String, !quotedMsgID.isEmpty {
+                    TUIChatDataProvider.findMessages([quotedMsgID]) { [weak self] _, _, msgs in
+                        guard let self = self, let originMsg = msgs.first else { return }
+                        let replyPreviewData = TUIReplyPreviewData()
+                        replyPreviewData.msgID = originMsg.msgID ?? ""
+                        replyPreviewData.msgAbstract = TUIMessageDataProvider.getDisplayString(message: originMsg) ?? ""
+                        replyPreviewData.sender = originMsg.nickName ?? originMsg.sender ?? ""
+                        replyPreviewData.type = originMsg.elemType
+                        replyPreviewData.originMessage = originMsg
+                        self.inputController.showReplyPreview(replyPreviewData)
                     }
                 }
             }
@@ -706,44 +693,17 @@ public class TUIBaseChatViewController: UIViewController, TUIBaseMessageControll
         guard let conversationData = conversationData else { return }
         var content = inputController.inputBar?.inputTextView.textStorage.tui_getPlainString()
 
-        var previewData: TUIReplyPreviewData? = nil
-        if let referenceData = inputController.referenceData {
-            previewData = referenceData
-        } else if let replyData = inputController.replyData {
-            previewData = replyData
-        }
-
-        if let previewData = previewData {
-            let contentValue = content ?? ""
-            let messageID = previewData.msgID ?? ""
-            let messageAbstract = (previewData.msgAbstract ?? "").getInternationalStringWithFaceContent()
-            let messageSender = previewData.sender ?? ""
-            let messageType = previewData.type.rawValue
-            let messageTime = previewData.originMessage?.timestamp?.timeIntervalSince1970 ?? 0
-            let messageSequence = previewData.originMessage?.seq ?? 0
-
+        let preview: TUIReplyPreviewData? = inputController.referenceData ?? inputController.replyData
+        if let preview = preview, let quotedMsgID = preview.originMessage?.msgID, !quotedMsgID.isEmpty {
             let dict: [String: Any] = [
-                "content": contentValue,
-                "messageReply": [
-                    "messageID": messageID,
-                    "messageAbstract": messageAbstract,
-                    "messageSender": messageSender,
-                    "messageType": messageType,
-                    "messageTime": messageTime, // Compatible for web
-                    "messageSequence": messageSequence, // Compatible for web
-                    "version": kDraftMessageReplyVersion
-                ]
+                "content": content ?? "",
+                "quotedMessageID": quotedMsgID
             ]
-
-            var mutableDict = dict
-            if let rootID = previewData.messageRootID, !rootID.isEmpty {
-                mutableDict["messageRootID"] = rootID
-            }
             do {
-                let data = try JSONSerialization.data(withJSONObject: mutableDict, options: [])
+                let data = try JSONSerialization.data(withJSONObject: dict, options: [])
                 content = String(data: data, encoding: .utf8)
             } catch {
-                print("Error serializing dictionary: \(error)")
+                print("Error serializing draft dictionary: \(error)")
             }
         }
 
@@ -1403,21 +1363,6 @@ public class TUIBaseChatViewController: UIViewController, TUIBaseMessageControll
                 replyData.type = elemType
             }
             replyData.originMessage = data.innerMessage
-
-            var cloudResultDic = [AnyHashable: Any]()
-            if let cloudCustomData = data.innerMessage?.cloudCustomData as Data?,
-               let originDic = TUITool.jsonData2Dictionary(cloudCustomData)
-            {
-                cloudResultDic.merge(originDic) { current, _ in current }
-            }
-
-            if let messageParentReply = cloudResultDic["messageReply"] as? [String: Any],
-               let messageRootID = messageParentReply["messageRootID"] as? String, !messageRootID.isEmpty
-            {
-                replyData.messageRootID = messageRootID
-            } else if let originMessageID = replyData.originMessage?.msgID, !originMessageID.isEmpty {
-                replyData.messageRootID = originMessageID
-            }
 
             self.inputController.showReplyPreview(replyData)
         }

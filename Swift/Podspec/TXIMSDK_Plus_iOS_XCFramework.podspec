@@ -1,9 +1,9 @@
+
 Pod::Spec.new do |spec|
-  spec.name         = 'TIMCommon_Swift'
-  spec.module_name  = 'TIMCommon'
+  spec.name         = 'TXIMSDK_Plus_iOS_XCFramework'
   spec.version      = '9.0.7652'
   spec.platform     = :ios
-  spec.ios.deployment_target = '9.0'
+  spec.ios.deployment_target = '8.0'
   spec.license      = { :type => 'Proprietary',
       :text => <<-LICENSE
         copyright 2017 tencent Ltd. All rights reserved.
@@ -12,18 +12,13 @@ Pod::Spec.new do |spec|
   spec.homepage     = 'https://cloud.tencent.com/document/product/269/3794'
   spec.documentation_url = 'https://cloud.tencent.com/document/product/269/9147'
   spec.authors      = 'tencent video cloud'
-  spec.summary      = 'TIMCommon_Swift'
-  spec.dependency 'TUICore'
-  spec.dependency 'SDWebImage'
-  spec.dependency 'SnapKit'
+  spec.summary      = 'TXIMSDK_Plus_iOS_XCFramework'
+  
   spec.requires_arc = true
 
-  spec.source = { :git => 'https://git.woa.com/lynxzhang/tui-components.git', :tag => spec.version}
-  spec.source_files = '**/*.{h,m,mm,c,swift}'
-
-  spec.resource = ['Resources/*.bundle']
+  spec.source = { :http => 'https://im.sdk.cloud.tencent.cn/download/plus/9.0.7652/ImSDK_Plus_9.0.7652.xcframework.zip'}
+  spec.vendored_frameworks = '**/ImSDK_Plus.xcframework'
   spec.resource_bundle = {
-    "#{spec.module_name}_Privacy" => 'Resources/PrivacyInfo.xcprivacy'
+    "#{spec.module_name}_Privacy" => '**/ImSDK_Plus.xcframework/ios-arm64_armv7/ImSDK_Plus.framework/PrivacyInfo.xcprivacy'
   }
-
 end

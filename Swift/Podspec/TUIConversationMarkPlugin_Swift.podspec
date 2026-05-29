@@ -1,7 +1,7 @@
 Pod::Spec.new do |spec|
     spec.name         = 'TUIConversationMarkPlugin_Swift'
     spec.module_name  = 'TUIConversationMarkPlugin'
-    spec.version      = '8.9.7544'
+    spec.version      = '9.0.7652'
     spec.platform     = :ios 
     spec.ios.deployment_target = '13.0'
     spec.license      = { :type => 'Proprietary',
@@ -16,7 +16,7 @@ Pod::Spec.new do |spec|
     
     spec.requires_arc = true
   
-    spec.source = { :http => 'https://im.sdk.cloud.tencent.cn/download/tuiplugin/8.9.7544/ios/TUIConversationMarkPlugin_Swift_8.9.7544.xcframework.zip'}
+    spec.source = { :http => 'https://im.sdk.cloud.tencent.cn/download/tuiplugin/9.0.7652/ios/TUIConversationMarkPlugin_Swift_9.0.7652.xcframework.zip'}
 
     spec.vendored_frameworks = 'TUIConversationMarkPlugin.xcframework'
     spec.resource_bundle = {

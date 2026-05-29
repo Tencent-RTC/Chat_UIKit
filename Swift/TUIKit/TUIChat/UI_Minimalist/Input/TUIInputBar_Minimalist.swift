@@ -51,6 +51,11 @@ class TUIInputBar_Minimalist: UIView, UITextViewDelegate, TUIAudioRecorderDelega
     var sendTypingStatusTimer: Timer?
     var allowSendTypingStatusByChangeWord: Bool = true
     weak var delegate: TUIInputBarDelegate_Minimalist?
+
+    // Transparent overlay: covers inputTextView by default to intercept tap and long-press
+    var inputTouchOverlay: UIView
+    // Placeholder hint label (inside inputTextView, shown when text is empty)
+    var inputHintLabel: UILabel
     
     // Voice recording related properties
     private var currentRecordingPath: String?
@@ -105,6 +110,8 @@ class TUIInputBar_Minimalist: UIView, UITextViewDelegate, TUIAudioRecorderDelega
         faceButton = UIButton()
         micButton = UIButton()
         cameraButton = UIButton()
+        inputTouchOverlay = UIView()
+        inputHintLabel = UILabel()
 
         aiInterruptButton = UIButton(type: .custom)
         aiSendButton = UIButton(type: .custom)
@@ -175,6 +182,23 @@ class TUIInputBar_Minimalist: UIView, UITextViewDelegate, TUIAudioRecorderDelega
         cameraButton.setImage(getImageFromCache("ToolViewInputCamera"), for: .normal)
         cameraButton.setImage(getImageFromCache("ToolViewInputCamera"), for: .highlighted)
         addSubview(cameraButton)
+
+        // Placeholder hint text (inside inputTextView, shown when text is empty)
+        inputHintLabel.text = TUISwift.timCommonLocalizableString("TUIKitInputTypeOrHoldToTalk")
+        inputHintLabel.font = normalFont
+        inputHintLabel.textColor = TUISwift.tuiChatDynamicColor("chat_input_text_placeholder_color", defaultColor: "#888888")
+        inputHintLabel.isUserInteractionEnabled = false
+        inputHintLabel.textAlignment = TUISwift.isRTL() ? .right : .left
+        inputTextView.addSubview(inputHintLabel)
+
+        // Transparent overlay: tap to enter text editing (hides itself), long-press to start recording
+        inputTouchOverlay.backgroundColor = .clear
+        let overlayTap = UITapGestureRecognizer(target: self, action: #selector(onInputOverlayTapped(_:)))
+        inputTouchOverlay.addGestureRecognizer(overlayTap)
+        let overlayLongPress = UILongPressGestureRecognizer(target: self, action: #selector(onInputOverlayLongPressed(_:)))
+        overlayLongPress.minimumPressDuration = 0.4
+        inputTouchOverlay.addGestureRecognizer(overlayLongPress)
+        addSubview(inputTouchOverlay)
     }
 
     func defaultLayout() {
@@ -198,6 +222,12 @@ class TUIInputBar_Minimalist: UIView, UITextViewDelegate, TUIAudioRecorderDelega
 
         keyboardButton.frame = faceButton.frame
         inputTextView.frame = CGRect(x: TUISwift.kScale390(56), y: 7, width: TUISwift.screen_Width() - TUISwift.kScale390(152), height: 36)
+        inputTouchOverlay.frame = inputTextView.frame
+        // hint label is inside inputTextView, horizontal padding matches textContainerInset
+        inputHintLabel.frame = CGRect(x: TUISwift.kScale390(16),
+                                      y: 0,
+                                      width: inputTextView.frame.width - TUISwift.kScale390(16) - TUISwift.kScale390(30),
+                                      height: inputTextView.frame.height)
 
         applyBorderTheme()
 
@@ -242,6 +272,34 @@ class TUIInputBar_Minimalist: UIView, UITextViewDelegate, TUIAudioRecorderDelega
 
     func getStickerFromCache(_ path: String) -> UIImage {
         return TUIImageCache.sharedInstance().getFaceFromCache(path) ?? UIImage()
+    }
+
+    // MARK: - Overlay handlers (long-press to record, tap to type text)
+
+    /// Tap on overlay -> hide overlay and let inputTextView become first responder to show keyboard
+    @objc func onInputOverlayTapped(_ gesture: UITapGestureRecognizer) {
+        inputTouchOverlay.isHidden = true
+        inputTextView.becomeFirstResponder()
+    }
+
+    /// Long-press on overlay -> start recording; release to send/cancel (reuses micButton recording logic)
+    @objc func onInputOverlayLongPressed(_ gesture: UILongPressGestureRecognizer) {
+        switch gesture.state {
+        case .began:
+            // Resign first responder to dismiss keyboard before starting recording
+            inputTextView.resignFirstResponder()
+            recorder.record()
+        case .changed:
+            // Use window coordinates to reuse recordView zone logic
+            if let window = window {
+                let touchPoint = gesture.location(in: window)
+                recordView?.updateZone(touchPoint: touchPoint)
+            }
+        case .ended, .cancelled, .failed:
+            handleRecordingEnd()
+        default:
+            break
+        }
     }
 
     // MARK: - Button events
@@ -374,6 +432,10 @@ class TUIInputBar_Minimalist: UIView, UITextViewDelegate, TUIAudioRecorderDelega
             faceButton.isHidden = false
         }
 
+        // Editing started: hide placeholder hint and overlay (disable long-press recording)
+        inputHintLabel.isHidden = true
+        inputTouchOverlay.isHidden = true
+
         isFocusOn = true
         allowSendTypingStatusByChangeWord = true
 
@@ -389,10 +451,17 @@ class TUIInputBar_Minimalist: UIView, UITextViewDelegate, TUIAudioRecorderDelega
 
     func textViewDidEndEditing(_ textView: UITextView) {
         isFocusOn = false
+        // On end editing, restore overlay to bring back "long-press to record / tap to type" interaction
+        inputTouchOverlay.isHidden = false
+        // Restore placeholder hint when input is empty
+        inputHintLabel.isHidden = textView.textStorage.tui_getPlainString().count > 0
         delegate?.inputTextViewShouldEndTyping(textView)
     }
 
     func textViewDidChange(_ textView: UITextView) {
+        // Toggle placeholder hint based on whether text is empty
+        inputHintLabel.isHidden = textView.textStorage.tui_getPlainString().count > 0
+
         if allowSendTypingStatusByChangeWord && isFocusOn && textView.textStorage.tui_getPlainString().count > 0 {
             delegate?.inputTextViewShouldBeginTyping(textView)
         }
@@ -436,6 +505,10 @@ class TUIInputBar_Minimalist: UIView, UITextViewDelegate, TUIAudioRecorderDelega
             var textFrame = self.inputTextView.frame
             textFrame.size.height += newHeight - oldHeight
             self.inputTextView.frame = textFrame
+            self.inputTouchOverlay.frame = textFrame
+            var hintFrame = self.inputHintLabel.frame
+            hintFrame.size.height = textFrame.size.height
+            self.inputHintLabel.frame = hintFrame
             
             // Update layout for AI style
             if self.inputBarStyle == .ai {

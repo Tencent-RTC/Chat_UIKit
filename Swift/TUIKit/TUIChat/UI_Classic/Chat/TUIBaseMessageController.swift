@@ -1042,7 +1042,6 @@ public class TUIBaseMessageController: UITableViewController, TUIMessageCellDele
         let recallAction = setupRecallAction(cell)
         let multiAction = setupMulitSelectAction(cell)
         let forwardAction = setupForwardAction(cell)
-        let replyAction = setupReplyAction(cell)
         let quoteAction = setupQuoteAction(cell)
         let audioPlaybackStyleAction = setupAudioPlaybackStyleAction(cell)
         let groupPinAction = setupGroupPinAction(cell)
@@ -1071,9 +1070,6 @@ public class TUIBaseMessageController: UITableViewController, TUIMessageCellDele
         if let forwardAction = forwardAction, let data = data, canForward(data) && isMsgSendSucceed && !isContentModerated {
             menu.addAction(forwardAction)
         }
-        if let replyAction = replyAction, isMsgSendSucceed && !isContentModerated {
-            menu.addAction(replyAction)
-        }
         if let quoteAction = quoteAction, isMsgSendSucceed && !isContentModerated {
             menu.addAction(quoteAction)
         }
@@ -1087,7 +1083,6 @@ public class TUIBaseMessageController: UITableViewController, TUIMessageCellDele
         let deleteAction = setupDeleteAction(cell)
         let recallAction = setupRecallAction(cell)
         let multiAction = setupMulitSelectAction(cell)
-        let replyAction = setupReplyAction(cell)
         let quoteAction = setupQuoteAction(cell)
         let pinAction = setupGroupPinAction(cell)
 
@@ -1099,8 +1094,7 @@ public class TUIBaseMessageController: UITableViewController, TUIMessageCellDele
         if let multiAction = multiAction {
             menu.addAction(multiAction)
         }
-        if let replyAction = replyAction, let quoteAction = quoteAction, isMsgSendSucceed {
-            menu.addAction(replyAction)
+        if let quoteAction = quoteAction, isMsgSendSucceed {
             menu.addAction(quoteAction)
         }
         if let pinAction = pinAction, let groupID = data?.innerMessage?.groupID, !groupID.isEmpty && (messageDataProvider?.isCurrentUserRoleSuperAdminInGroup() ?? false) && isMsgSendSucceed && !isContentModerated {
@@ -1137,7 +1131,6 @@ public class TUIBaseMessageController: UITableViewController, TUIMessageCellDele
         let deleteAction = setupDeleteAction(cell)
         let multiAction = setupMulitSelectAction(cell)
         let forwardAction = setupForwardAction(cell)
-        let replyAction = setupReplyAction(cell)
         let quoteAction = setupQuoteAction(cell)
         let groupPinAction = setupGroupPinAction(cell)
 
@@ -1163,9 +1156,6 @@ public class TUIBaseMessageController: UITableViewController, TUIMessageCellDele
                 }
                 if let forwardAction = forwardAction, let data = data, self.canForward(data) {
                     menu.addAction(forwardAction)
-                }
-                if let replyAction = replyAction {
-                    menu.addAction(replyAction)
                 }
                 if let quoteAction = quoteAction {
                     menu.addAction(quoteAction)
@@ -1388,18 +1378,6 @@ public class TUIBaseMessageController: UITableViewController, TUIMessageCellDele
     }
 
     public func onJumpToRepliesDetailPage(_ data: TUIMessageCellData) {
-        guard let conversationData = conversationData else { return }
-        hasCoverPage = true
-        let repliesDetailVC = TUIRepliesDetailViewController(cellData: data, conversationData: conversationData)
-        repliesDetailVC.delegate = delegate
-        navigationController?.pushViewController(repliesDetailVC, animated: true)
-        repliesDetailVC.parentPageDataProvider = messageDataProvider ?? TUIMessageDataProvider()
-
-        repliesDetailVC.willCloseCallback = { [weak self] in
-            guard let self = self else { return }
-            self.tableView.reloadData()
-            self.hasCoverPage = false
-        }
     }
 
     override public func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {

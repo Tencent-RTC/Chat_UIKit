@@ -59,6 +59,12 @@ class TUIInputBar: UIView, UITextViewDelegate, TUIAudioRecorderDelegate, TUIResp
     var recordAnimateViews: [UIImageView]
     var recordAnimateCoverView: UIImageView
     var recordAnimateCoverViewFrame: CGRect?
+    // Transparent overlay: covers inputTextView by default to intercept tap and long-press
+    var inputTouchOverlay: UIView
+    // Placeholder hint label (inside inputTextView, shown when text is empty)
+    var inputHintLabel: UILabel
+    // Marks whether the finger is dragged outside the input area during long-press recording
+    var recordingDragOutside: Bool = false
     var inputBarTextChanged: ((UITextView) -> Void)?
     var recordStartTime: Date?
     var recordTimer: Timer?
@@ -130,6 +136,8 @@ class TUIInputBar: UIView, UITextViewDelegate, TUIAudioRecorderDelegate, TUIResp
         recordTipsLabel = UILabel()
         micButton = UIButton()
         recordButton = UIButton()
+        inputTouchOverlay = UIView()
+        inputHintLabel = UILabel()
         aiInterruptButton = UIButton(type: .custom)
         aiSendButton = UIButton(type: .custom)
 
@@ -203,6 +211,23 @@ class TUIInputBar: UIView, UITextViewDelegate, TUIAudioRecorderDelegate, TUIResp
         inputTextView.returnKeyType = .send
         addSubview(inputTextView)
 
+        // Placeholder hint text (inside inputTextView, shown when text is empty)
+        inputHintLabel.text = TUISwift.timCommonLocalizableString("TUIKitInputTypeOrHoldToTalk")
+        inputHintLabel.font = normalFont
+        inputHintLabel.textColor = TUISwift.tuiChatDynamicColor("chat_input_text_placeholder_color", defaultColor: "#888888")
+        inputHintLabel.isUserInteractionEnabled = false
+        inputHintLabel.textAlignment = TUISwift.isRTL() ? .right : .left
+        inputTextView.addSubview(inputHintLabel)
+
+        // Transparent overlay: tap to enter text editing (hides itself), long-press to start recording
+        inputTouchOverlay.backgroundColor = .clear
+        let overlayTap = UITapGestureRecognizer(target: self, action: #selector(onInputOverlayTapped(_:)))
+        inputTouchOverlay.addGestureRecognizer(overlayTap)
+        let overlayLongPress = UILongPressGestureRecognizer(target: self, action: #selector(onInputOverlayLongPressed(_:)))
+        overlayLongPress.minimumPressDuration = 0.4
+        inputTouchOverlay.addGestureRecognizer(overlayLongPress)
+        addSubview(inputTouchOverlay)
+
         applyBorderTheme()
     }
 
@@ -273,6 +298,18 @@ class TUIInputBar: UIView, UITextViewDelegate, TUIAudioRecorderDelegate, TUIResp
             make.height.equalTo(TUISwift.tTextView_TextView_Height_Min())
             make.centerY.equalToSuperview()
         }
+
+        // overlay matches inputTextView frame
+        inputTouchOverlay.snp.remakeConstraints { make in
+            make.edges.equalTo(inputTextView)
+        }
+
+        // hint label is inside inputTextView, horizontal padding aligned with textContainer
+        inputHintLabel.snp.remakeConstraints { make in
+            make.leading.equalTo(inputTextView).offset(8)
+            make.trailing.equalTo(inputTextView).offset(-8)
+            make.centerY.equalTo(inputTextView)
+        }
         
         // Hide AI buttons
         aiInterruptButton.isHidden = true
@@ -306,6 +343,35 @@ class TUIInputBar: UIView, UITextViewDelegate, TUIAudioRecorderDelegate, TUIResp
 
     func getStickerFromCache(_ path: String) -> UIImage {
         return TUIImageCache.sharedInstance().getFaceFromCache(path) ?? UIImage()
+    }
+
+    // MARK: - Overlay handlers (long-press to record, tap to type text)
+
+    /// Tap on overlay -> hide overlay and let inputTextView become first responder to show keyboard
+    @objc func onInputOverlayTapped(_ gesture: UITapGestureRecognizer) {
+        inputTouchOverlay.isHidden = true
+        inputTextView.becomeFirstResponder()
+    }
+
+    /// Long-press on overlay -> start recording; release to send/cancel (reuses recordButton recording logic)
+    @objc func onInputOverlayLongPressed(_ gesture: UILongPressGestureRecognizer) {
+        switch gesture.state {
+        case .began:
+            // Resign first responder to dismiss keyboard before starting recording
+            inputTextView.resignFirstResponder()
+            recordingDragOutside = false
+            recorder.record()
+        case .changed:
+            // Use window coordinates to reuse recordView zone logic
+            if let window = window {
+                let touchPoint = gesture.location(in: window)
+                recordView?.updateZone(touchPoint: touchPoint)
+            }
+        case .ended, .cancelled, .failed:
+            handleRecordingEnd()
+        default:
+            break
+        }
     }
 
     // MARK: - Evevnt
@@ -458,6 +524,10 @@ class TUIInputBar: UIView, UITextViewDelegate, TUIAudioRecorderDelegate, TUIResp
             faceButton.isHidden = false
         }
 
+        // Editing started: hide placeholder hint and overlay (disable long-press recording)
+        inputHintLabel.isHidden = true
+        inputTouchOverlay.isHidden = true
+
         isFocusOn = true
         allowSendTypingStatusByChangeWord = true
 
@@ -473,10 +543,17 @@ class TUIInputBar: UIView, UITextViewDelegate, TUIAudioRecorderDelegate, TUIResp
 
     func textViewDidEndEditing(_ textView: UITextView) {
         isFocusOn = false
+        // On end editing, restore overlay to bring back "long-press to record / tap to type" interaction
+        inputTouchOverlay.isHidden = false
+        // Restore placeholder hint when input is empty
+        inputHintLabel.isHidden = textView.textStorage.tui_getPlainString().count > 0
         delegate?.inputTextViewShouldEndTyping(textView)
     }
 
     func textViewDidChange(_ textView: UITextView) {
+        // Toggle placeholder hint based on whether text is empty
+        inputHintLabel.isHidden = textView.textStorage.tui_getPlainString().count > 0
+
         if allowSendTypingStatusByChangeWord && isFocusOn && textView.textStorage.tui_getPlainString().count > 0 {
             delegate?.inputTextViewShouldBeginTyping(textView)
         }

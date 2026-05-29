@@ -1,7 +1,7 @@
 Pod::Spec.new do |spec|
   spec.name         = 'TUIEmojiPlugin_Swift'
   spec.module_name  = 'TUIEmojiPlugin'
-  spec.version      = '8.9.7544'
+  spec.version      = '9.0.7652'
   spec.platform     = :ios 
   spec.ios.deployment_target = '9.0'
   spec.license      = { :type => 'Proprietary',

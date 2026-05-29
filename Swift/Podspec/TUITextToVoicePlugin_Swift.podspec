@@ -1,7 +1,7 @@
 Pod::Spec.new do |spec|
   spec.name         = 'TUITextToVoicePlugin_Swift'
   spec.module_name  = 'TUITextToVoicePlugin'
-  spec.version      = '8.9.7544'
+  spec.version      = '9.0.7652'
   spec.platform     = :ios
   spec.ios.deployment_target = '13.0'
   spec.license      = { :type => 'Proprietary',
@@ -19,7 +19,7 @@ Pod::Spec.new do |spec|
   
   spec.requires_arc = true
 
-  spec.source = { :http => 'https://im.sdk.cloud.tencent.cn/download/tuikit/8.9.7544/ios/TUITextToVoicePlugin_Swift.zip'}
+  spec.source = { :http => 'https://im.sdk.cloud.tencent.cn/download/tuikit/9.0.7652/ios/TUITextToVoicePlugin_Swift.zip'}
   spec.source_files = '**/*.{h,m,mm,c,swift}'
   spec.resource = ['Resources/*.bundle']
   spec.resource_bundle = {

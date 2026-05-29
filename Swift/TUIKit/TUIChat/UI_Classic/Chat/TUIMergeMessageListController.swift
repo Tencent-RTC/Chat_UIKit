@@ -256,14 +256,6 @@ class TUIMergeMessageListController: UITableViewController, TUIMessageCellDelega
     }
     
     func onJumpToRepliesDetailPage(_ data: TUIMessageCellData) {
-        guard let conversationData = conversationData else { return }
-        let repliesDetailVC = TUIRepliesDetailViewController(cellData: data, conversationData: conversationData)
-        repliesDetailVC.delegate = delegate
-        navigationController?.pushViewController(repliesDetailVC, animated: true)
-        repliesDetailVC.parentPageDataProvider = parentPageDataProvider
-        repliesDetailVC.willCloseCallback = {
-            self.tableView.reloadData()
-        }
     }
     
     func scrollToLocateMessage(_ locateMessage: V2TIMMessage, matchKeyword msgAbstract: String) {
@@ -321,56 +313,47 @@ class TUIMergeMessageListController: UITableViewController, TUIMessageCellDelega
     
     private func showReplyMessage<T: TUIBubbleMessageCell>(_ cell: T) {
         TUITool.applicationKeywindow()?.endEditing(true)
-        
+
         var originMsgID = ""
         var msgAbstract = ""
-        
-        if let replyCell = cell as? TUIReplyMessageCell,
-           let cellData = replyCell.replyData
-        {
-            originMsgID = cellData.messageRootID ?? ""
+
+        if let replyCell = cell as? TUIReplyMessageCell, let cellData = replyCell.replyData {
+            originMsgID = cellData.originMsgID ?? ""
             msgAbstract = cellData.msgAbstract ?? ""
-        } else if let referenceCell = cell as? TUIReferenceMessageCell,
-                  let cellData = referenceCell.referenceData
-        {
+        } else if let referenceCell = cell as? TUIReferenceMessageCell, let cellData = referenceCell.referenceData {
             originMsgID = cellData.originMsgID ?? ""
             msgAbstract = cellData.msgAbstract ?? ""
         }
-        
-        if let originMemoryMessageData = uiMsgs?.first(where: { $0.innerMessage?.msgID == originMsgID }), cell.isKind(of: TUIReplyMessageCell.self) {
-            onJumpToRepliesDetailPage(originMemoryMessageData)
 
-        } else {
-            msgDataProvider.findMessages(msgIDs: [originMsgID], callback: { [weak self] success, _, msgs in
-                guard let self else { return }
-                if !success {
-                    TUITool.makeToast(TUISwift.timCommonLocalizableString("TUIKitReplyMessageNotFoundOriginMessage"))
-                    return
-                }
-                guard let message = msgs?.first else {
-                    TUITool.makeToast(TUISwift.timCommonLocalizableString("TUIKitReplyMessageNotFoundOriginMessage"))
-                    return
-                }
-                
-                if message.status == .MSG_STATUS_HAS_DELETED || message.status == .MSG_STATUS_LOCAL_REVOKED {
-                    TUITool.makeToast(TUISwift.timCommonLocalizableString("TUIKitReplyMessageNotFoundOriginMessage"))
-                    return
-                }
-                
-                if cell.isKind(of: TUIReplyMessageCell.self) {
-                    self.jumpDetailPage(by: message)
-                } else if cell.isKind(of: TUIReferenceMessageCell.self) {
-                    let existed = checkIfMessageExistsInLocal(message)
-                    if !existed {
-                        TUITool.makeToast(TUISwift.timCommonLocalizableString("TUIKitReplyMessageNotFoundOriginMessage"))
-                        return
-                    }
-                    self.scrollToLocateMessage(message, matchKeyword: msgAbstract)
-                }
-            })
+        guard !originMsgID.isEmpty else {
+            TUITool.makeToast(TUISwift.timCommonLocalizableString("TUIKitReplyMessageNotFoundOriginMessage"))
+            return
         }
+
+        msgDataProvider.findMessages(msgIDs: [originMsgID], callback: { [weak self] success, _, msgs in
+            guard let self else { return }
+            if !success {
+                TUITool.makeToast(TUISwift.timCommonLocalizableString("TUIKitReplyMessageNotFoundOriginMessage"))
+                return
+            }
+            guard let message = msgs?.first else {
+                TUITool.makeToast(TUISwift.timCommonLocalizableString("TUIKitReplyMessageNotFoundOriginMessage"))
+                return
+            }
+            if message.status == .MSG_STATUS_HAS_DELETED || message.status == .MSG_STATUS_LOCAL_REVOKED {
+                TUITool.makeToast(TUISwift.timCommonLocalizableString("TUIKitReplyMessageNotFoundOriginMessage"))
+                return
+            }
+
+            let existed = checkIfMessageExistsInLocal(message)
+            if !existed {
+                TUITool.makeToast(TUISwift.timCommonLocalizableString("TUIKitReplyMessageNotFoundOriginMessage"))
+                return
+            }
+            self.scrollToLocateMessage(message, matchKeyword: msgAbstract)
+        })
     }
-    
+
     private func checkIfMessageExistsInLocal(_ locateMessage: V2TIMMessage) -> Bool {
         guard let uiMsgs = uiMsgs else { return false }
         for uiMsg in uiMsgs {
@@ -379,16 +362,6 @@ class TUIMergeMessageListController: UITableViewController, TUIMessageCellDelega
             }
         }
         return false
-    }
-    
-    private func jumpDetailPage(by message: V2TIMMessage) {
-        let uiMsgs = transUIMsgFromIMMsg([message])
-        msgDataProvider.preProcessMessage(uiMsgs) { [weak self] in
-            guard let self else { return }
-            if let cellData = uiMsgs.first(where: { $0.innerMessage?.msgID == message.msgID }) {
-                self.onJumpToRepliesDetailPage(cellData)
-            }
-        }
     }
     
     private func showImageMessage(_ cell: TUIImageMessageCell) {

@@ -33,7 +33,6 @@ public class TUIInputController_Minimalist: UIViewController, TUIInputBarDelegat
     weak var delegate: TUIInputControllerDelegate_Minimalist?
     var status: InputStatus = .input
     private var keyboardFrame: CGRect = .zero
-    private var modifyRootReplyMsgBlock: ((TUIMessageCellData) -> Void)?
     
     // MARK: - AI Conversation Properties
     private var aiStyleEnabled: Bool = false
@@ -110,7 +109,6 @@ public class TUIInputController_Minimalist: UIViewController, TUIInputBarDelegat
         NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillHide(_:)), name: UIResponder.keyboardWillHideNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillShow(_:)), name: UIResponder.keyboardWillShowNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillChangeFrame(_:)), name: UIResponder.keyboardWillChangeFrameNotification, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(inputMessageStatusChanged(_:)), name: Notification.Name("kTUINotifyMessageStatusChanged"), object: nil)
     }
 
     override public func viewDidAppear(_ animated: Bool) {
@@ -270,120 +268,20 @@ public class TUIInputController_Minimalist: UIViewController, TUIInputBarDelegat
 
     @objc func inputBarDidSendText(_ textView: TUIInputBar_Minimalist, text: String) {
         let content = text.getInternationalStringWithFaceContent()
-        let message = V2TIMManager.sharedInstance().createTextMessage(text: content)!
-        appendReplyDataIfNeeded(message)
-        appendReferenceDataIfNeeded(message)
+        guard let baseMessage = V2TIMManager.sharedInstance().createTextMessage(text: content) else { return }
+        let message = wrapWithQuoteIfNeeded(baseMessage)
         delegate?.inputController(self, didSendMessage: message)
     }
 
-    @objc func inputMessageStatusChanged(_ noti: Notification) {
-        if let userInfo = noti.userInfo as? [String: Any],
-           let msg = userInfo["msg"] as? TUIMessageCellData,
-           let statusNumber = userInfo["status"] as? NSNumber,
-           let status = TMsgStatus(rawValue: UInt(statusNumber.intValue))
-        {
-            if status == .success {
-                DispatchQueue.main.async {
-                    if self.modifyRootReplyMsgBlock != nil {
-                        self.modifyRootReplyMsgBlock!(msg)
-                        self.modifyRootReplyMsgBlock = nil
-                    }
-                }
-            }
+    private func wrapWithQuoteIfNeeded(_ message: V2TIMMessage) -> V2TIMMessage {
+        let preview: TUIReplyPreviewData? = referenceData ?? replyData
+        guard let preview = preview, let quoted = preview.originMessage else {
+            return message
         }
-    }
-
-    private func appendReplyDataIfNeeded(_ message: V2TIMMessage) {
-        guard let replyData = replyData else { return }
-
-        let parentMsg = replyData.originMessage
-        var simpleReply: [String: Any] = [
-            "messageID": replyData.msgID ?? "",
-            "messageAbstract": (replyData.msgAbstract ?? "").getInternationalStringWithFaceContent(),
-            "messageSender": replyData.sender ?? "",
-            "messageType": replyData.type.rawValue,
-            "messageTime": replyData.originMessage?.timestamp?.timeIntervalSince1970 ?? 0,
-            "messageSequence": replyData.originMessage?.seq ?? 0,
-            "version": kMessageReplyVersion
-        ]
-
-        var cloudResultDic: [String: Any] = [:]
-        if let cloudCustomData = parentMsg?.cloudCustomData,
-           let originDic = TUITool.jsonData2Dictionary(cloudCustomData) as? [String: Any]
-        {
-            cloudResultDic.merge(originDic) { _, new in new }
-            cloudResultDic.removeValue(forKey: "messageReplies")
-            cloudResultDic.removeValue(forKey: "messageReact")
-        }
-
-        let messageReply = cloudResultDic["messageReply"] as? [String: Any]
-        var messageRootID = messageReply?["messageRootID"] as? String ?? ""
-        if let replyRootID = replyData.messageRootID, !replyRootID.isEmpty {
-            messageRootID = replyRootID
-        }
-        if messageRootID.isEmpty {
-            if let parentMsgID = parentMsg?.msgID, !parentMsgID.isEmpty {
-                messageRootID = parentMsgID
-            }
-        }
-
-        simpleReply["messageRootID"] = messageRootID
-        cloudResultDic["messageReply"] = simpleReply
-
-        if let data = TUITool.dictionary2JsonData(cloudResultDic) {
-            message.cloudCustomData = data
-        } else {
-            assertionFailure("convert reply dict to data failed")
-        }
+        let wrapped = V2TIMManager.sharedInstance()
+            .createQuoteMessage(message: message, quotedMessage: quoted) ?? message
         exitReplyAndReference(nil)
-
-        modifyRootReplyMsgBlock = { [weak self] cellData in
-            guard let self else { return }
-            self.modifyRootReplyMsgByID(messageRootID, currentMsg: cellData)
-            self.modifyRootReplyMsgBlock = nil
-        }
-    }
-
-    private func modifyRootReplyMsgByID(_ messageRootID: String, currentMsg: TUIMessageCellData) {
-        guard let msg = currentMsg.innerMessage else { return }
-        var messageAbstract = ""
-        if let textElem = msg.textElem {
-            messageAbstract = textElem.text?.getInternationalStringWithFaceContent() ?? ""
-        }
-        let simpleCurrentContent: [String: Any] = [
-            "messageID": msg.msgID ?? "",
-            "messageAbstract": messageAbstract,
-            "messageSender": msg.sender ?? "",
-            "messageType": msg.elemType.rawValue,
-            "messageTime": msg.timestamp?.timeIntervalSince1970 ?? "",
-            "messageSequence": msg.seq,
-            "version": kMessageReplyVersion
-        ]
-        TUIChatDataProvider.findMessages([messageRootID]) { _, _, msgs in
-            if msgs.count > 0 {
-                let rootMsg = msgs.first!
-                TUIChatModifyMessageHelper.shared.modifyMessage(rootMsg, simpleCurrentContent: simpleCurrentContent)
-            }
-        }
-    }
-
-    private func appendReferenceDataIfNeeded(_ message: V2TIMMessage) {
-        guard let referenceData = referenceData else { return }
-        let dict: [String: Any] = [
-            "messageReply": [
-                "messageID": referenceData.msgID ?? "",
-                "messageAbstract": (referenceData.msgAbstract ?? "").getInternationalStringWithFaceContent(),
-                "messageSender": referenceData.sender ?? "",
-                "messageType": referenceData.type.rawValue,
-                "messageTime": referenceData.originMessage?.timestamp?.timeIntervalSince1970 ?? 0,
-                "messageSequence": referenceData.originMessage?.seq ?? 0,
-                "version": kMessageReplyVersion
-            ]
-        ]
-        if let data = try? JSONSerialization.data(withJSONObject: dict, options: []) {
-            message.cloudCustomData = data
-        }
-        exitReplyAndReference(nil)
+        return wrapped
     }
 
     func inputBarDidSendVoice(_ textView: TUIInputBar_Minimalist, path: String) {
@@ -517,11 +415,9 @@ public class TUIInputController_Minimalist: UIViewController, TUIInputBarDelegat
         guard let text = inputBar?.getInput(), !text.isEmpty else { return }
         let content = text.getInternationalStringWithFaceContent()
         inputBar?.clearInput()
-        if let message = V2TIMManager.sharedInstance().createTextMessage(text: content) {
-            appendReplyDataIfNeeded(message)
-            appendReferenceDataIfNeeded(message)
-            delegate?.inputController(self, didSendMessage: message)
-        }
+        guard let baseMessage = V2TIMManager.sharedInstance().createTextMessage(text: content) else { return }
+        let message = wrapWithQuoteIfNeeded(baseMessage)
+        delegate?.inputController(self, didSendMessage: message)
     }
 
     // MARK: - TUIFaceVerticalViewDelegate
@@ -537,7 +433,11 @@ public class TUIInputController_Minimalist: UIViewController, TUIInputBarDelegat
                 inputBar?.addEmoji(face)
                 updateRecentMenuQueue(face.name ?? "")
             } else {
-                let message = V2TIMManager.sharedInstance().createFaceMessage(index: Int32(group.groupIndex), data: face.name?.data(using: .utf8) ?? Data())!
+                guard let baseMessage = V2TIMManager.sharedInstance().createFaceMessage(
+                    index: Int32(group.groupIndex),
+                    data: face.name?.data(using: .utf8) ?? Data()
+                ) else { return }
+                let message = wrapWithQuoteIfNeeded(baseMessage)
                 delegate?.inputController(self, didSendMessage: message)
             }
         }

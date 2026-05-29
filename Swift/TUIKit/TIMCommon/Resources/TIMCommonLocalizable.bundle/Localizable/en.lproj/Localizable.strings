@@ -170,6 +170,7 @@
 "TUIKitTipsContactListNil" = "Contact list is empty. Add friends first.";
 
 "TUIKitInputHoldToTalk" = "Hold to Talk";
+"TUIKitInputTypeOrHoldToTalk" = "Send a message or hold to talk...";
 "TUIKitInputReleaseToSend" = "Release to End";
 "TUIKitInputReleaseToCancel" = "Release to Cancel";
 
@@ -851,7 +852,7 @@
 "VoiceClone" = "Voice Clone";
 "VoiceCloneInstruction" = "Please record 10-18 seconds of audio to clone your custom voice";
 "VoiceCloneSampleText" = "Suggested text to read:\n\n\"Hello everyone, I am your personal voice assistant, happy to serve you. The weather is really nice today, hope you have a pleasant day.\"";
-"VoiceCloneTapToRecord" = "Agree and tap to start recording";
+"VoiceCloneTapToRecord" = "Tap to start recording";
 "VoiceCloneTapToStop" = "Tap to stop recording";
 "VoiceCloneRecordingComplete" = "Recording complete";
 "VoiceCloneNamePlaceholder" = "Enter voice name (optional)";
@@ -866,7 +867,7 @@
 "VoiceCloneMicPermissionMessage" = "Please allow microphone access in Settings to record audio";
 "VoiceCloneGoToSettings" = "Go to Settings";
 "VoiceCloneDescription" = "Record audio to clone custom voice";
-"VoiceClonePrivacyNotice" = "Please ensure that the voice sample is owned by you or has been legally authorized. The generated content is for text-to-speech experience of message content only, and must not be used for illegal purposes such as fraud or infringement. You will be solely responsible for any legal consequences arising from misuse.";
+"VoiceClonePrivacyNotice" = "Creating a voice requires access to your voice audio. This sensitive information is only used for the current feature. If you do not agree to authorize, you may not be able to use the voice cloning feature. Tapping \"Hold to Record\" means you agree to authorize.";
 
 // Voice Selection
 "VoiceSelection" = "Voice Selection";

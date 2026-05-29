@@ -9,7 +9,6 @@ class TUIReplyPreviewData {
     var faceURL: String? = ""
     var type: V2TIMElemType = .ELEM_TYPE_NONE
     var originMessage: V2TIMMessage?
-    var messageRootID: String? = ""
 
     static func displayAbstract(type: V2TIMElemType, abstract: String, withFileName: Bool, isRisk: Bool) -> String {
         var text = abstract

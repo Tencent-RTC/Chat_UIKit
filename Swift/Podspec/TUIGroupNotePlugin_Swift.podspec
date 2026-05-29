@@ -1,7 +1,7 @@
 Pod::Spec.new do |spec|
   spec.name         = 'TUIGroupNotePlugin_Swift'
   spec.module_name  = 'TUIGroupNotePlugin'
-  spec.version      = '8.9.7544'
+  spec.version      = '9.0.7652'
   spec.platform     = :ios 
   spec.ios.deployment_target = '13.0'
   spec.license      = { :type => 'Proprietary',
@@ -14,7 +14,7 @@ Pod::Spec.new do |spec|
   spec.authors      = 'tencent video cloud'
   spec.summary      = 'TUIGroupNotePlugin_Swift'
   spec.requires_arc = true
-  spec.source = { :http => 'https://im.sdk.cloud.tencent.cn/download/tuiplugin/8.9.7544/ios/TUIGroupNotePlugin_Swift_8.9.7544.xcframework.zip'}
+  spec.source = { :http => 'https://im.sdk.cloud.tencent.cn/download/tuiplugin/9.0.7652/ios/TUIGroupNotePlugin_Swift_9.0.7652.xcframework.zip'}
   
   spec.vendored_frameworks = 'TUIGroupNotePlugin.xcframework'
   

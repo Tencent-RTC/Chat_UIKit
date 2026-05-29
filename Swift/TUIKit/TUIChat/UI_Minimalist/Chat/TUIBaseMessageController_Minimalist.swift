@@ -1023,12 +1023,8 @@ public class TUIBaseMessageController_Minimalist: UITableViewController, TUIMess
 
     func addPluginCustomMessageItemToItems(_ items: inout [TUIChatPopContextExtensionItem], cell: TUIMessageCell, alertController: TUIChatPopContextController) {
         let imMsg: V2TIMMessage? = cell.messageData?.innerMessage
-        // Plugin build-in custom messsages, support actions: multiSelect, reference, reply, delete, recall.
         if isAddMultiSelect(imMsg) {
             items.append(setupMultiSelectAction(for: alertController, targetCell: cell))
-        }
-        if isAddReply(imMsg) {
-            items.append(setupReplyAction(for: alertController, targetCell: cell))
         }
         if isAddQuote(imMsg) {
             items.append(setupReferenceAction(for: alertController, targetCell: cell))
@@ -1043,7 +1039,6 @@ public class TUIBaseMessageController_Minimalist: UITableViewController, TUIMess
 
     func addNomalMessageItemToItems(_ items: inout [TUIChatPopContextExtensionItem], cell: TUIMessageCell, alertController: TUIChatPopContextController) {
         let imMsg: V2TIMMessage? = cell.messageData?.innerMessage
-        // 普通消息。
         if imMsg?.soundElem != nil {
             items.append(setupAudioPlaybackStyleAction(for: alertController, targetCell: cell))
         }
@@ -1058,9 +1053,6 @@ public class TUIBaseMessageController_Minimalist: UITableViewController, TUIMess
         }
         if isAddQuote(imMsg) {
             items.append(setupReferenceAction(for: alertController, targetCell: cell))
-        }
-        if isAddReply(imMsg) {
-            items.append(setupReplyAction(for: alertController, targetCell: cell))
         }
         if isAddRecall(imMsg) {
             items.append(setupRecallAction(for: alertController, targetCell: cell))
@@ -1257,29 +1249,6 @@ public class TUIBaseMessageController_Minimalist: UITableViewController, TUIMess
     }
 
     public func onJumpToRepliesDetailPage(_ data: TUIMessageCellData) {
-        guard let msg = data.innerMessage,
-              let messageDataProvider = messageDataProvider,
-              let copyData = TUIMessageDataProvider.convertToCellData(from: msg),
-              let conversationData = conversationData else { return }
-        messageDataProvider.preProcessMessage([copyData]) {
-            DispatchQueue.main.async {
-                let cell = TUIMessageCell()
-                cell.fill(with: copyData)
-
-                let repliesDetailVC = TUIRepliesDetailViewController_Minimalist(cellData: copyData, conversationData: conversationData)
-                repliesDetailVC.delegate = self.delegate
-                repliesDetailVC.modalPresentationStyle = .custom
-
-                self.navigationController?.present(repliesDetailVC, animated: true, completion: nil)
-                self.hasCoverPage = true
-                repliesDetailVC.parentPageDataProvider = messageDataProvider
-                repliesDetailVC.willCloseCallback = { [weak self] in
-                    guard let self else { return }
-                    self.hasCoverPage = false
-                    tableView.reloadData()
-                }
-            }
-        }
     }
 
     public func onJumpToMessageInfoPage(_ data: TUIMessageCellData, selectCell: TUIMessageCell) {

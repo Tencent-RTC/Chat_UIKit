@@ -176,6 +176,7 @@
 "TUIKitUserStatusUnlogined" = "غير مسجل الدخول";
 
 "TUIKitInputHoldToTalk" = "استمر في الضغط للتحدث";
+"TUIKitInputTypeOrHoldToTalk" = "رسالة أو اضغط...";
 "TUIKitInputReleaseToSend" = "رفع الإصبع لإرسال";
 "TUIKitInputReleaseToCancel" = "رفع الإصبع للإلغاء";
 "TUIKitInputBlankMessageTitle" = "لا يمكن إرسال رسالة فارغة";
@@ -839,7 +840,7 @@
 "VoiceClone" = "استنساخ الصوت";
 "VoiceCloneInstruction" = "يرجى تسجيل 10-18 ثانية من الصوت لاستنساخ صوتك المخصص";
 "VoiceCloneSampleText" = "النص المقترح للقراءة:\n\n\"مرحباً بالجميع، أنا مساعدك الصوتي الشخصي، سعيد بخدمتك. الطقس جميل اليوم، أتمنى لك يوماً سعيداً.\"";
-"VoiceCloneTapToRecord" = "وافق واضغط لبدء التسجيل";
+"VoiceCloneTapToRecord" = "انقر لبدء التسجيل";
 "VoiceCloneTapToStop" = "انقر لإيقاف التسجيل";
 "VoiceCloneRecordingComplete" = "اكتمل التسجيل";
 "VoiceCloneNamePlaceholder" = "أدخل اسم الصوت (اختياري)";
@@ -854,7 +855,7 @@
 "VoiceCloneMicPermissionMessage" = "يرجى السماح بالوصول إلى الميكروفون في الإعدادات";
 "VoiceCloneGoToSettings" = "الذهاب للإعدادات";
 "VoiceCloneDescription" = "تسجيل صوت لاستنساخ صوت مخصص";
-"VoiceClonePrivacyNotice" = "يرجى التأكد من أن عينة الصوت مملوكة لك أو أنك حصلت على تفويض قانوني لاستخدامها. يُستخدم المحتوى المُنشأ فقط لتجربة تحويل النص إلى كلام للرسائل النصية، ويُحظر استخدامه في أي أنشطة غير قانونية مثل الاحتيال أو انتهاك الحقوق. تتحمل وحدك جميع العواقب القانونية الناتجة عن سوء الاستخدام."
+"VoiceClonePrivacyNotice" = "يتطلب إنشاء الصوت الوصول إلى تسجيل صوتك. تُستخدم هذه المعلومات الحساسة فقط للميزة الحالية. إذا لم توافق على التفويض، فقد لا تتمكن من استخدام ميزة استنساخ الصوت. النقر على \"اضغط مع الاستمرار للتسجيل\" يعني موافقتك على التفويض.";
 
 // Voice Selection
 "VoiceSelection" = "اختيار الصوت";

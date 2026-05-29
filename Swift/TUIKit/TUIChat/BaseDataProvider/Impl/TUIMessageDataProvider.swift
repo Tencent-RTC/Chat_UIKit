@@ -51,13 +51,12 @@ public class TUIMessageDataProvider: TUIMessageBaseDataProvider {
     }
 
     static func parseMessageCellDataFromMessageCustomData(_ message: V2TIMMessage) -> TUIMessageCellData? {
-        var data: TUIMessageCellData? = nil
-        if message.isContainsCloudCustom(of: .messageReply) {
-            data = TUIReplyMessageCellData.getCellData(message: message)
-        } else if message.isContainsCloudCustom(of: .messageReference) {
-            data = TUIReferenceMessageCellData.getCellData(message: message)
+        if let quoteInfo = message.quoteInfo,
+           let msgID = quoteInfo.msgID, !msgID.isEmpty
+        {
+            return TUIReferenceMessageCellData.getCellData(message: message)
         }
-        return data
+        return nil
     }
 
     static func parseMessageCellDataFromMessageElement(_ message: V2TIMMessage) -> TUIMessageCellData? {
@@ -115,25 +114,6 @@ public class TUIMessageDataProvider: TUIMessageBaseDataProvider {
             }
         }
 
-        if message.isContainsCloudCustom(of: .messageReplies) {
-            message.doThingsInContainsCloudCustom(of: .messageReplies) { isContains, obj in
-                if isContains {
-                    if data is TUISystemMessageCellData || data is TUIJoinGroupMessageCellData {
-                        data.showMessageModifyReplies = false
-                    } else {
-                        data.showMessageModifyReplies = true
-                    }
-                    if let dic = obj as? [String: Any] {
-                        let typeStr = TUICloudCustomDataTypeCenter.convertType2String(.messageReplies) ?? ""
-                        if let messageReplies = dic[typeStr] as? [String: Any],
-                           let repliesArr = messageReplies["replies"] as? [[String: Any]]
-                        {
-                            data.messageModifyReplies = repliesArr
-                        }
-                    }
-                }
-            }
-        }
     }
 
     static func getCustomMessageCellData(_ message: V2TIMMessage) -> TUIMessageCellData? {
