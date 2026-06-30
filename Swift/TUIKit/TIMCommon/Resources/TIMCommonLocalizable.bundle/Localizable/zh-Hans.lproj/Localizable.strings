@@ -192,6 +192,21 @@
 "TUIKitInputSend" = "发送";
 "TUIKitInputNoTextRecognized" = "未识别到文字";
 "TUIKitInputNoNetworkOrNotLoggedIn" = "无网络或未登录";
+"TUIKitInputTranslate" = "翻译";
+"TUIKitInputCancelTranslate" = "取消翻译";
+"TUIKitInputSwitchLanguage" = "切换语言";
+"TUIKitInputReadAloud" = "朗读";
+"TUIKitInputStopReadAloud" = "停止";
+"TUIKitInputSelectLanguage" = "选择语言";
+"TUIKitInputTranslating" = "翻译中…";
+"TUIKitListenFromHere" = "从当前听";
+"TUIKitListenSelfPrefix" = "我说：";
+"TUIKitListenOtherPrefixFormat" = "%@说：";
+"TUIKitListenSentImage" = "发送了图片";
+"TUIKitListenSentVideo" = "发送了视频";
+"TUIKitListenSentFile" = "发送了文件";
+"TUIKitListenSentMergeFormat" = "发送了%@";
+"TUIKitListenVoicePlaceholder" = "语音消息";
 
 "TUIKitGroupProfileDetails" = "详细资料";
 "TUIKitGroupProfileMember" = "群成员";

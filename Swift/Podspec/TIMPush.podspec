@@ -1,6 +1,6 @@
 Pod::Spec.new do |spec|
   spec.name         = 'TIMPush'
-  spec.version      = '9.0.7652'
+  spec.version      = '9.0.7660'
   spec.platform     = :ios
   spec.ios.deployment_target = '10.0'
   spec.license      = { :type => 'Proprietary',
@@ -15,7 +15,7 @@ Pod::Spec.new do |spec|
   
   spec.requires_arc = true
 
-  spec.source = { :http => 'https://im.sdk.qcloud.com/download/tuiplugin/9.0.7652/ios/TIMPush_9.0.7652.xcframework.zip'}
+  spec.source = { :http => 'https://im.sdk.qcloud.com/download/tuiplugin/9.0.7660/ios/TIMPush_9.0.7660.xcframework.zip'}
   
   spec.dependency 'TXIMSDK_Plus_iOS_XCFramework','>= 9.0.7652'
   spec.vendored_frameworks = 'TIMPush.xcframework'

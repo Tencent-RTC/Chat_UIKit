@@ -11,6 +11,12 @@ import TUICore
 
 // public typealias TUICallServiceResultCallback = (Int32, String, [AnyHashable: Any]?) -> Void
 
+public extension Notification.Name {
+    /// Posted right before a voice recording actually starts, so that any
+    /// ongoing playback (e.g. "listen from here") can stop itself.
+    static let TUIAudioRecordingDidStart = Notification.Name("TUIAudioRecordingDidStart")
+}
+
 public class TUIAudioRecorder: NSObject, AVAudioRecorderDelegate, TUINotificationProtocol {
     public weak var delegate: TUIAudioRecorderDelegate?
     public private(set) var recordedFilePath: String = ""
@@ -48,6 +54,7 @@ public class TUIAudioRecorder: NSObject, AVAudioRecorderDelegate, TUINotificatio
             }
             self.delegate?.didCheckPermission?(self, isGranted, false)
             if isGranted {
+                NotificationCenter.default.post(name: .TUIAudioRecordingDidStart, object: self)
                 self.createRecordedFilePath()
                 if !self.startCallKitRecording() {
                     self.startSystemRecording()

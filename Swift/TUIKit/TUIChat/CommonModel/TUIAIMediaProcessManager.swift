@@ -290,6 +290,7 @@ public class TUIAIMediaProcessManager {
         completion: @escaping (Result<String, TUIAIMediaProcessError>) -> Void
     ) {
         var param: [String: Any] = ["text": text]
+        param["audioFormat"] = "wav"
         if let voiceId = voiceId, !voiceId.isEmpty {
             param["voiceId"] = voiceId
         }
@@ -304,8 +305,9 @@ public class TUIAIMediaProcessManager {
             api: "convertTextToVoice",
             param: paramStr as NSObject,
             succ: { result in
-                if let url = result as? String, !url.isEmpty {
-                    completion(.success(url))
+                let audioURL = TUIAIMediaProcessManager.parseAudioURL(from: result)
+                if let audioURL = audioURL, !audioURL.isEmpty {
+                    completion(.success(audioURL))
                 } else {
                     completion(.failure(TUIAIMediaProcessError(code: -1, message: "Empty result")))
                 }
@@ -314,6 +316,31 @@ public class TUIAIMediaProcessManager {
                 completion(.failure(TUIAIMediaProcessError(code: code, message: desc)))
             }
         )
+    }
+    
+    /// Parse the audio URL out of the `convertTextToVoice` experimental API result.
+    /// The API returns a JSON string like `{"audioUrl": "..."}`; for robustness we
+    /// also accept a dictionary result or a bare URL string.
+    private static func parseAudioURL(from result: Any?) -> String? {
+        if let resultDict = result as? [String: Any] {
+            return resultDict["audioUrl"] as? String
+        }
+        if let resultString = result as? String {
+            guard let resultData = resultString.data(using: .utf8) else {
+                return resultString
+            }
+            do {
+                let object = try JSONSerialization.jsonObject(with: resultData, options: [])
+                if let resultDict = object as? [String: Any] {
+                    return resultDict["audioUrl"] as? String
+                }
+                return resultString
+            } catch {
+                print("parseAudioURL JSON parse failed: \(error), raw: \(resultString)")
+                return resultString
+            }
+        }
+        return nil
     }
     
     /// Clone voice from URL

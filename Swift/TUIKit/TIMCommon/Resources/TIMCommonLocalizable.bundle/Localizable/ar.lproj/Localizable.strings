@@ -192,6 +192,21 @@
 "TUIKitInputSend" = "إرسال";
 "TUIKitInputNoTextRecognized" = "لم يتم التعرف على أي نص";
 "TUIKitInputNoNetworkOrNotLoggedIn" = "لا توجد شبكة أو لم يتم تسجيل الدخول";
+"TUIKitInputTranslate" = "ترجمة";
+"TUIKitInputCancelTranslate" = "إلغاء الترجمة";
+"TUIKitInputSwitchLanguage" = "تغيير اللغة";
+"TUIKitInputReadAloud" = "قراءة";
+"TUIKitInputStopReadAloud" = "إيقاف";
+"TUIKitInputSelectLanguage" = "اختر اللغة";
+"TUIKitInputTranslating" = "جارٍ الترجمة…";
+"TUIKitListenFromHere" = "الاستماع من هنا";
+"TUIKitListenSelfPrefix" = "قلت: ";
+"TUIKitListenOtherPrefixFormat" = "%@ قال: ";
+"TUIKitListenSentImage" = "أرسل صورة";
+"TUIKitListenSentVideo" = "أرسل فيديو";
+"TUIKitListenSentFile" = "أرسل ملفًا";
+"TUIKitListenSentMergeFormat" = "أرسل %@";
+"TUIKitListenVoicePlaceholder" = "رسالة صوتية";
 
 "TUIKitGroupProfileDetails" = "تفاصيل الملف الشخصي";
 "TUIKitGroupProfileMember" = "أعضاء المجموعة";

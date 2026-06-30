@@ -280,7 +280,8 @@ public class TUIAudioPlaybackManager: NSObject {
     ///   - url: Remote URL
     ///   - msgID: Message ID for tracking
     ///   - stateCallback: Callback for playback state changes
-    public func playAudio(fromURL url: URL, msgID: String, stateCallback: ((Bool) -> Void)? = nil) {
+    ///   - finishCallback: Callback when playback finishes naturally
+    public func playAudio(fromURL url: URL, msgID: String, stateCallback: ((Bool) -> Void)? = nil, finishCallback: (() -> Void)? = nil) {
         // Stop current playing audio
         stopCurrentAudio()
         
@@ -290,9 +291,12 @@ public class TUIAudioPlaybackManager: NSObject {
         // Notify to stop other audio players
         NotificationCenter.default.post(name: .TUIStopAllAudioPlayback, object: self)
         
-        // Store callback
+        // Store callbacks
         if let callback = stateCallback {
             stateCallbacks[msgID] = callback
+        }
+        if let callback = finishCallback {
+            finishCallbacks[msgID] = callback
         }
         
         // Notify playing started (loading)

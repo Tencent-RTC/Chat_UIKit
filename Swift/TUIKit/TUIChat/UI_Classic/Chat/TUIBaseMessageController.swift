@@ -23,6 +23,11 @@ public class TUIBaseMessageController: UITableViewController, TUIMessageCellDele
     var hasCoverPage: Bool = false
     var currentVoiceMsg: TUIVoiceMessageCellData?
 
+    // MARK: - Listen From Here
+
+    var listenFromHereController: TUIListenFromHereController?
+    var listenPlaybackBar: TUIListenPlaybackBar?
+
     // MARK: - AI Streaming Callback
 
     var steamCellFinishedBlock: ((Bool, TUIMessageCellData) -> Void)?
@@ -93,6 +98,7 @@ public class TUIBaseMessageController: UITableViewController, TUIMessageCellDele
     override public func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         currentVoiceMsg?.stopVoiceMessage()
+        stopListenFromHere()
     }
 
     override public func viewDidDisappear(_ animated: Bool) {
@@ -1076,6 +1082,9 @@ public class TUIBaseMessageController: UITableViewController, TUIMessageCellDele
         if let groupPinAction = groupPinAction, let groupID = data?.innerMessage?.groupID, !groupID.isEmpty && (messageDataProvider?.isCurrentUserRoleSuperAdminInGroup() ?? false) && isMsgSendSucceed && !isContentModerated {
             menu.addAction(groupPinAction)
         }
+        if isMsgSendSucceed {
+            menu.addAction(setupListenFromHereAction(cell))
+        }
     }
 
     func addChatPluginCommonActionToCell(_ cell: TUIMessageCell, ofMenu menu: TUIChatPopMenu) {
@@ -1105,6 +1114,9 @@ public class TUIBaseMessageController: UITableViewController, TUIMessageCellDele
         }
         if let recallAction = recallAction, imMsg.isSelf && Date().timeIntervalSince(imMsg.timestamp ?? Date()) < Double(TUIChatConfig.shared.timeIntervalForMessageRecall) && isMsgSendSucceed {
             menu.addAction(recallAction)
+        }
+        if isMsgSendSucceed {
+            menu.addAction(setupListenFromHereAction(cell))
         }
     }
 
@@ -1269,6 +1281,16 @@ public class TUIBaseMessageController: UITableViewController, TUIMessageCellDele
             self?.onReference(nil)
         }
         return isQuoteShown ? quoteAction : nil
+    }
+
+    func setupListenFromHereAction(_ cell: TUIMessageCell) -> TUIChatPopMenuAction {
+        let listenAction = TUIChatPopMenuAction(title: TUISwift.timCommonLocalizableString("TUIKitListenFromHere"),
+                                                image: TUISwift.tuiChatBundleThemeImage("chat_icon_text_to_voice_img", defaultImage: "icon_text_to_voice"),
+                                                weight: 1000)
+        { [weak self] in
+            self?.onListenFromHere()
+        }
+        return listenAction
     }
 
     func setupAudioPlaybackStyleAction(_ cell: TUIMessageCell) -> TUIChatPopMenuAction? {
@@ -1485,6 +1507,60 @@ public class TUIBaseMessageController: UITableViewController, TUIMessageCellDele
 
     @objc public func onReference(_ sender: Any?) {
         delegate?.onReferenceMessage(self, data: menuUIMsg)
+    }
+
+    // MARK: - Listen From Here
+
+    @objc public func onListenFromHere() {
+        guard let menuUIMsg = menuUIMsg,
+              let uiMsgs = messageDataProvider?.uiMsgs,
+              let startIndex = uiMsgs.firstIndex(of: menuUIMsg) else { return }
+
+        let plan = TUIListenPlanBuilder.buildPlan(from: uiMsgs, startIndex: startIndex)
+        guard !plan.isEmpty else { return }
+
+        stopListenFromHere()
+        startListenFromHere(with: plan)
+    }
+
+    private func startListenFromHere(with plan: [TUIListenItem]) {
+        stopListenFromHere()
+
+        let controller = TUIListenFromHereController(items: plan, conversationID: conversationData?.conversationID)
+        let bar = TUIListenPlaybackBar(frame: .zero)
+        listenFromHereController = controller
+        listenPlaybackBar = bar
+
+        bar.onClose = { [weak self] in
+            self?.stopListenFromHere()
+        }
+        bar.show(in: listenBarHostView())
+
+        controller.onPreparing = { [weak self] in
+            self?.listenPlaybackBar?.showPreparing()
+        }
+        controller.onPlaybackStarted = { [weak self] in
+            self?.listenPlaybackBar?.showPlaying()
+        }
+        controller.onItemChanged = { [weak self] text in
+            self?.listenPlaybackBar?.updateText(text)
+        }
+        controller.onFinished = { [weak self] in
+            self?.stopListenFromHere()
+        }
+
+        controller.start()
+    }
+
+    func stopListenFromHere() {
+        listenFromHereController?.stop()
+        listenFromHereController = nil
+        listenPlaybackBar?.dismiss()
+        listenPlaybackBar = nil
+    }
+
+    private func listenBarHostView() -> UIView {
+        return parent?.view ?? view.superview ?? view
     }
 
     @objc public func onGroupPin(_ sender: Any?, currentStatus: Bool) {

@@ -187,6 +187,21 @@
 "TUIKitInputSend" = "Send";
 "TUIKitInputNoTextRecognized" = "No text recognized";
 "TUIKitInputNoNetworkOrNotLoggedIn" = "No network or not logged in";
+"TUIKitInputTranslate" = "Translate";
+"TUIKitInputCancelTranslate" = "Cancel Translation";
+"TUIKitInputSwitchLanguage" = "Switch Language";
+"TUIKitInputReadAloud" = "Read Aloud";
+"TUIKitInputStopReadAloud" = "Stop";
+"TUIKitInputSelectLanguage" = "Select Language";
+"TUIKitInputTranslating" = "Translating…";
+"TUIKitListenFromHere" = "Listen from here";
+"TUIKitListenSelfPrefix" = "I said: ";
+"TUIKitListenOtherPrefixFormat" = "%@ said: ";
+"TUIKitListenSentImage" = "sent an image";
+"TUIKitListenSentVideo" = "sent a video";
+"TUIKitListenSentFile" = "sent a file";
+"TUIKitListenSentMergeFormat" = "sent %@";
+"TUIKitListenVoicePlaceholder" = "Voice message";
 
 "TUIKitGroupProfileDetails" = "Details";
 "TUIKitGroupProfileMember" = "Group Members";
