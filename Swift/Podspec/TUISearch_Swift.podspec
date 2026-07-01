@@ -1,7 +1,7 @@
 Pod::Spec.new do |spec|
   spec.name         = 'TUISearch_Swift'
   spec.module_name  = 'TUISearch'
-  spec.version      = '9.0.7652'
+  spec.version      = '9.0.7660'
   spec.platform     = :ios 
   spec.ios.deployment_target = '13.0'
   spec.license      = { :type => 'Proprietary',
@@ -17,7 +17,7 @@ Pod::Spec.new do |spec|
 
   spec.requires_arc = true
 
-  spec.source = { :http => 'https://im.sdk.cloud.tencent.cn/download/tuikit/9.0.7652/ios/TUISearch_Swift.zip?time=3'}
+  spec.source = { :http => 'https://im.sdk.cloud.tencent.cn/download/tuikit/9.0.7660/ios/TUISearch_Swift.zip?time=3'}
 
   spec.default_subspec = 'ALL'
 
@@ -26,7 +26,7 @@ Pod::Spec.new do |spec|
       cellData.source_files = '**/TUISearch/BaseCell/CellData/*.{h,m,mm,swift}'
       cellData.dependency 'TXIMSDK_Plus_iOS_XCFramework'
       cellData.dependency 'TUICore'
-      cellData.dependency 'TIMCommon_Swift','~> 9.0.7652'
+      cellData.dependency 'TIMCommon_Swift','~> 9.0.7660'
     end
     baseCell.subspec 'CellUI' do |cellUI|
       cellUI.source_files = '**/TUISearch/BaseCell/CellUI/*.{h,m,mm,swift}'

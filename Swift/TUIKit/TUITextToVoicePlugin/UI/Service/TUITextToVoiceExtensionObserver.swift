@@ -6,6 +6,16 @@ import TUICore
 
 public class TUITextToVoiceExtensionObserver: NSObject, TUIExtensionProtocol, TUIServiceProtocol {
     weak var navVC: UINavigationController?
+
+    // MARK: - Service Method Names
+
+    private enum ServiceMethod {
+        static let calculateTopContainerInsetTop = "TUICore_TUITextToVoiceService_CalculateTopContainerInsetTopMethod"
+        static let getGlobalSettings = "TUICore_TUITextToVoiceService_GetGlobalSettingsMethod"
+        static let updateSetting = "TUICore_TUITextToVoiceService_UpdateSettingMethod"
+        static let navigateToSetting = "TUICore_TUITextToVoiceService_NavigateToSettingMethod"
+        static let getEffectiveVoiceId = "TUICore_TUITextToVoiceService_GetEffectiveVoiceIdMethod"
+    }
     
     static let shared: TUITextToVoiceExtensionObserver = {
         let instance = TUITextToVoiceExtensionObserver()
@@ -46,23 +56,27 @@ public class TUITextToVoiceExtensionObserver: NSObject, TUIExtensionProtocol, TU
     
     public func onCall(_ method: String, param: [AnyHashable: Any]?) -> Any? {
         switch method {
-        case "TUICore_TUITextToVoiceService_CalculateTopContainerInsetTopMethod":
+        case ServiceMethod.calculateTopContainerInsetTop:
             guard let cellData = param?["cellData"] as? TUIMessageCellData else {
                 return NSNumber(value: 0)
             }
             let insetTop = calculateTopContainerInsetTopValue(for: cellData)
             return NSNumber(value: insetTop)
             
-        case "TUICore_TUITextToVoiceService_GetGlobalSettingsMethod":
+        case ServiceMethod.getGlobalSettings:
             return getGlobalSettingsData(param: param)
             
-        case "TUICore_TUITextToVoiceService_UpdateSettingMethod":
+        case ServiceMethod.updateSetting:
             updateSetting(param: param)
             return nil
             
-        case "TUICore_TUITextToVoiceService_NavigateToSettingMethod":
+        case ServiceMethod.navigateToSetting:
             navigateToSetting(param: param)
             return nil
+            
+        case ServiceMethod.getEffectiveVoiceId:
+            let conversationID = param?["conversationID"] as? String
+            return TUITextToVoiceDataProvider.getEffectiveVoiceId(for: conversationID)
             
         default:
             return nil

@@ -192,6 +192,21 @@
 "TUIKitInputSend" = "發送";
 "TUIKitInputNoTextRecognized" = "未識別到文字";
 "TUIKitInputNoNetworkOrNotLoggedIn" = "無網路或未登入";
+"TUIKitInputTranslate" = "翻譯";
+"TUIKitInputCancelTranslate" = "取消翻譯";
+"TUIKitInputSwitchLanguage" = "切換語言";
+"TUIKitInputReadAloud" = "朗讀";
+"TUIKitInputStopReadAloud" = "停止";
+"TUIKitInputSelectLanguage" = "選擇語言";
+"TUIKitInputTranslating" = "翻譯中…";
+"TUIKitListenFromHere" = "從目前聽";
+"TUIKitListenSelfPrefix" = "我說：";
+"TUIKitListenOtherPrefixFormat" = "%@說：";
+"TUIKitListenSentImage" = "傳送了圖片";
+"TUIKitListenSentVideo" = "傳送了影片";
+"TUIKitListenSentFile" = "傳送了檔案";
+"TUIKitListenSentMergeFormat" = "傳送了%@";
+"TUIKitListenVoicePlaceholder" = "語音訊息";
 
 "TUIKitGroupProfileDetails" = "詳細資料";
 "TUIKitGroupProfileMember" = "群成員";

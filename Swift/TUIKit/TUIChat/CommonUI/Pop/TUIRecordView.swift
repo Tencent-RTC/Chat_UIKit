@@ -145,8 +145,36 @@ public class TUIRecordView: UIView {
     public var onSendText: (() -> Void)?
     public var onCancelSend: (() -> Void)?
     
+    /// Conversation used to resolve the selected voice when reading aloud.
+    public var conversationID: String?
+    
     
     private var convertedText: String = ""
+    
+    // MARK: - Record Translation State
+    
+    /// Original transcription text; all translations use this as the source.
+    private var originalText: String = ""
+    private var isTranslated: Bool = false
+    private var isReadingAloud: Bool = false
+    private lazy var ttsPlaybackHelper = TUITTSPlaybackHelper()
+    
+    private enum TranslateChipState {
+        case untranslated
+        case translating
+        case translated
+    }
+    private var translateChipState: TranslateChipState = .untranslated
+    /// Target language of the most recent translate request; used to discard
+    /// stale callbacks when multiple translations are triggered in a row.
+    private var latestTranslateLanguageCode: String?
+    
+    // Translate chip row UI
+    private var translateChipRow: UIStackView!
+    private var translateChip: UIButton!
+    private var cancelTranslateChip: UIButton!
+    private var switchLanguageChip: UIButton!
+    private var readAloudChip: UIButton!
     
     private var convertLocalVoiceToTextState: ConvertLocalVoiceToTextState = .idle
     private var isAnimatingTextHeight: Bool = false
@@ -482,6 +510,44 @@ public class TUIRecordView: UIView {
         sendButtonLoadingLabel.textAlignment = .center
         sendButtonLoadingLabel.alpha = 0
         sendButtonLoadingBackgroundView.addSubview(sendButtonLoadingLabel)
+        
+        setupTranslateChipRow()
+    }
+    
+    private func setupTranslateChipRow() {
+        translateChip = makeChip(title: TUISwift.timCommonLocalizableString("TUIKitInputTranslate"),
+                                 action: #selector(handleTranslateTap))
+        cancelTranslateChip = makeChip(title: TUISwift.timCommonLocalizableString("TUIKitInputCancelTranslate"),
+                                       action: #selector(handleCancelTranslateTap))
+        switchLanguageChip = makeChip(title: TUISwift.timCommonLocalizableString("TUIKitInputSwitchLanguage"),
+                                      action: #selector(handleSwitchLanguageTap))
+        readAloudChip = makeChip(title: TUISwift.timCommonLocalizableString("TUIKitInputReadAloud"),
+                                 action: #selector(handleReadAloudTap))
+        
+        translateChipRow = UIStackView(arrangedSubviews: [translateChip, cancelTranslateChip, switchLanguageChip, readAloudChip])
+        translateChipRow.axis = .horizontal
+        translateChipRow.alignment = .center
+        translateChipRow.spacing = 8
+        translateChipRow.alpha = 0
+        textProcessedContainer.addSubview(translateChipRow)
+        
+        applyTranslateChipState()
+    }
+    
+    private func makeChip(title: String, action: Selector) -> UIButton {
+        let chip = UIButton(type: .custom)
+        chip.setTitle(title, for: .normal)
+        chip.titleLabel?.font = UIFont.systemFont(ofSize: 13, weight: .regular)
+        chip.setTitleColor(Colors.darkText, for: .normal)
+        chip.backgroundColor = Colors.grayBackground
+        chip.layer.cornerRadius = 14
+        chip.clipsToBounds = true
+        chip.contentEdgeInsets = UIEdgeInsets(top: 0, left: 12, bottom: 0, right: 12)
+        chip.addTarget(self, action: action, for: .touchUpInside)
+        chip.snp.makeConstraints { make in
+            make.height.equalTo(28)
+        }
+        return chip
     }
     
     @objc private func handleSendVoice() {
@@ -614,7 +680,7 @@ public class TUIRecordView: UIView {
     
     private func layoutTextProcessedUI() {
         let screenWidth = TUISwift.screen_Width()
-        let sideMargin: CGFloat = 48 // All buttons group 48px from both sides
+        let sideMargin: CGFloat = Layout.paddingSide // Align button group with text bubble's left/right edges
         let buttonSize = Layout.buttonSize // Small buttons 48x48
         let sendButtonSize = Layout.sendButtonSize // Send button 80x80
         // Use same bottom offset as first stage buttons (sendAreaHeight + 15)
@@ -1105,6 +1171,7 @@ public class TUIRecordView: UIView {
     /// Enter text processing state (called when user releases in toText zone)
     public func enterTextProcessingState() {
         convertLocalVoiceToTextState = .processing
+        resetTranslateState()
         
         // Hide normal UI (but keep bottom waveform visible with new styling)
         UIView.animate(withDuration: Layout.animationDuration) {
@@ -1129,6 +1196,12 @@ public class TUIRecordView: UIView {
                 make.trailing.equalToSuperview().offset(-Layout.paddingSide)
                 make.bottom.equalTo(sendButtonContainer.snp.top).offset(-42)
                 bubbleHeightConstraint = make.height.greaterThanOrEqualTo(Layout.minBubbleHeight + Layout.bubbleArrowHeight).constraint
+            }
+            
+            translateChipRow.snp.remakeConstraints { make in
+                make.top.equalTo(bubbleContainerView.snp.bottom).offset(2)
+                make.leading.equalTo(bubbleContainerView.snp.leading).offset(4)
+                make.trailing.lessThanOrEqualTo(bubbleContainerView.snp.trailing)
             }
         }
         
@@ -1212,12 +1285,17 @@ public class TUIRecordView: UIView {
         bubbleLoadingIndicator.isHidden = true
         
         convertedText = text
+        originalText = text
+        isTranslated = false
         textBubbleTextView.text = text
         textBubbleTextView.isEditable = true
         textBubbleTextView.isUserInteractionEnabled = true
         textBubbleTextView.textAlignment = .left
         
         updateBubbleHeightForText(text)
+        
+        translateChipState = .untranslated
+        applyTranslateChipState()
         
         // Transition from light blue loading to blue enabled send button
         UIView.animate(withDuration: 0.3) {
@@ -1227,6 +1305,9 @@ public class TUIRecordView: UIView {
             
             // Show text view
             self.textBubbleTextView.alpha = 1
+            
+            // Show translate chip row
+            self.translateChipRow.alpha = 1
             
             // Enable and show send button with blue background
             self.sendButtonView.alpha = 1
@@ -1366,6 +1447,7 @@ public class TUIRecordView: UIView {
     
     /// Exit text processing state (back to normal)
     public func exitTextProcessingState() {
+        resetTranslateState()
         // Move bubble back to main view
         if bubbleContainerView.superview == textProcessedContainer {
             let offset = Layout.paddingSide + Layout.buttonCircleSize / 2 + 10
@@ -1409,6 +1491,160 @@ public class TUIRecordView: UIView {
     /// Get converted text (from editable text view)
     public func getConvertedText() -> String {
         textBubbleTextView.text ?? convertedText
+    }
+    
+    // MARK: - Record Translation
+    
+    private func resetTranslateState() {
+        ttsPlaybackHelper.stop()
+        isReadingAloud = false
+        isTranslated = false
+        originalText = ""
+        translateChipState = .untranslated
+        if translateChipRow != nil {
+            translateChipRow.alpha = 0
+            applyTranslateChipState()
+        }
+    }
+    
+    private func applyTranslateChipState() {
+        guard translateChipRow != nil else { return }
+        switch translateChipState {
+        case .untranslated:
+            translateChip.isHidden = false
+            translateChip.isEnabled = true
+            translateChip.setTitle(TUISwift.timCommonLocalizableString("TUIKitInputTranslate"), for: .normal)
+            cancelTranslateChip.isHidden = true
+            switchLanguageChip.isHidden = true
+            readAloudChip.isHidden = true
+        case .translating:
+            translateChip.isHidden = false
+            translateChip.isEnabled = false
+            translateChip.setTitle(TUISwift.timCommonLocalizableString("TUIKitInputTranslating"), for: .normal)
+            cancelTranslateChip.isHidden = true
+            switchLanguageChip.isHidden = true
+            readAloudChip.isHidden = true
+        case .translated:
+            translateChip.isHidden = true
+            cancelTranslateChip.isHidden = false
+            switchLanguageChip.isHidden = false
+            readAloudChip.isHidden = false
+            updateReadAloudChipTitle()
+        }
+    }
+    
+    private func updateReadAloudChipTitle() {
+        let key = isReadingAloud ? "TUIKitInputStopReadAloud" : "TUIKitInputReadAloud"
+        readAloudChip.setTitle(TUISwift.timCommonLocalizableString(key), for: .normal)
+    }
+    
+    @objc private func handleTranslateTap() {
+        if let code = TUIVoiceRecordTranslateConfig.shared.targetLanguageCode {
+            performTranslate(to: code)
+        } else {
+            presentLanguagePicker()
+        }
+    }
+    
+    @objc private func handleSwitchLanguageTap() {
+        presentLanguagePicker()
+    }
+    
+    @objc private func handleCancelTranslateTap() {
+        stopReadAloudIfNeeded()
+        isTranslated = false
+        textBubbleTextView.text = originalText
+        updateBubbleHeightForText(originalText)
+        translateChipState = .untranslated
+        applyTranslateChipState()
+    }
+    
+    @objc private func handleReadAloudTap() {
+        if isReadingAloud {
+            stopReadAloudIfNeeded()
+            return
+        }
+        let text = getConvertedText().trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        
+        isReadingAloud = true
+        updateReadAloudChipTitle()
+        
+        ttsPlaybackHelper.setStopHandler { [weak self] in
+            self?.resetReadAloudChip()
+        }
+        ttsPlaybackHelper.speak(
+            text: text,
+            conversationID: conversationID,
+            onFinish: { [weak self] in
+                self?.resetReadAloudChip()
+            },
+            onError: { [weak self] _ in
+                self?.resetReadAloudChip()
+            }
+        )
+    }
+    
+    private func stopReadAloudIfNeeded() {
+        guard isReadingAloud else { return }
+        ttsPlaybackHelper.stop()
+        resetReadAloudChip()
+    }
+    
+    private func resetReadAloudChip() {
+        isReadingAloud = false
+        updateReadAloudChipTitle()
+    }
+    
+    private func presentLanguagePicker() {
+        let config = TUIVoiceRecordTranslateConfig.shared
+        let picker = TUIRecordLanguagePickerView(languages: config.languages, selectedCode: config.targetLanguageCode)
+        picker.onSelected = { [weak self] language in
+            TUIVoiceRecordTranslateConfig.shared.targetLanguageCode = language.code
+            self?.performTranslate(to: language.code)
+        }
+        picker.show(in: self)
+    }
+    
+    private func performTranslate(to languageCode: String) {
+        let source = originalText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !source.isEmpty else { return }
+        
+        stopReadAloudIfNeeded()
+        latestTranslateLanguageCode = languageCode
+        translateChipState = .translating
+        applyTranslateChipState()
+        
+        TUIAIMediaProcessManager.shared.translateText(text: source, targetLanguage: languageCode) { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                guard self.latestTranslateLanguageCode == languageCode else { return }
+                switch result {
+                case .success(let translatedText):
+                    guard !translatedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                        self.translateChipState = self.isTranslated ? .translated : .untranslated
+                        self.applyTranslateChipState()
+                        return
+                    }
+                    self.isTranslated = true
+                    self.textBubbleTextView.text = translatedText
+                    self.updateBubbleHeightForText(translatedText)
+                    self.translateChipState = .translated
+                    self.applyTranslateChipState()
+                case .failure(let error):
+                    self.translateChipState = self.isTranslated ? .translated : .untranslated
+                    self.applyTranslateChipState()
+                    self.showCustomToast(self.translateErrorMessage(for: error))
+                }
+            }
+        }
+    }
+
+    private func translateErrorMessage(for error: TUIAIMediaProcessError) -> String {
+        if let message = error.message, !message.isEmpty {
+            return message
+        }
+        return TUISwift.timCommonLocalizableString("TUIKitInputNoNetworkOrNotLoggedIn")
     }
     
 
